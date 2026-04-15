@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NBA Playoffs Challenge</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">GitHub Pages + Firebase</p>
+          <h1>NBA Playoffs Challenge</h1>
+          <p class="hero-copy">
+            Claim your player slot once, snake-draft your teams, lock a Finals winner, and keep a shared leaderboard live across every device.
+          </p>
+        </div>
+        <div class="identity-card">
+          <p class="identity-label">Signed in as</p>
+          <strong id="current-player-name">Loading...</strong>
+          <p class="section-note" id="auth-status">Connecting to Firebase...</p>
+          <div class="identity-actions">
+            <button id="switch-player-button" class="secondary-button" type="button">Choose Player</button>
+            <button id="commissioner-button" class="secondary-button" type="button">Commissioner</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section id="setup-panel" class="panel hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Setup Needed</p>
+              <h2>Firebase Config Missing</h2>
+            </div>
+          </div>
+          <p class="hero-copy">
+            Add your Firebase project settings in <code>firebase-config.js</code>, enable Anonymous Auth and Firestore, then refresh this page.
+          </p>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Live Standings</p>
+              <h2>Leaderboard</h2>
+            </div>
+            <p class="section-note" id="last-updated">Refreshing...</p>
+          </div>
+          <div id="leaderboard" class="leaderboard-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Snake Draft</p>
+              <h2>Draft Board</h2>
+            </div>
+            <p class="section-note" id="draft-status"></p>
+          </div>
+          <div id="turn-strip" class="turn-strip"></div>
+          <div id="available-teams" class="teams-grid"></div>
+        </section>
+
+        <section class="panel two-column">
+          <div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Your Card</p>
+                <h2>My Picks</h2>
+              </div>
+            </div>
+            <div id="my-team-list" class="chip-list"></div>
+            <div class="finals-box">
+              <label for="finals-select">Finals winner pick</label>
+              <select id="finals-select"></select>
+              <button id="lock-finals-button" type="button">Lock Finals Pick</button>
+              <p class="section-note">Bonus: +5 if you drafted the champion, +3 if you called the winner without drafting them.</p>
+            </div>
+          </div>
+          <div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">All Players</p>
+                <h2>Roster View</h2>
+              </div>
+            </div>
+            <div id="player-boards" class="player-boards"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Scoring Desk</p>
+              <h2>Commissioner Controls</h2>
+            </div>
+            <p class="section-note" id="commissioner-status">Locked. Use the Commissioner button to unlock this device.</p>
+          </div>
+
+          <div class="admin-grid">
+            <div class="admin-card">
+              <h3>Player Names</h3>
+              <div id="name-editor" class="name-editor"></div>
+              <button id="save-names-button" type="button">Save Names</button>
+              <p class="section-note">Names can only be changed before the first draft pick.</p>
+            </div>
+
+            <div class="admin-card">
+              <h3>Champion</h3>
+              <select id="champion-select"></select>
+              <button id="save-champion-button" type="button">Save Champion</button>
+              <button id="clear-champion-button" class="secondary-button" type="button">Clear Champion</button>
+            </div>
+          </div>
+
+          <div class="score-table-wrap">
+            <table class="score-table">
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Wins</th>
+                  <th>Losses</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="score-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="reset-row">
+            <button id="reset-button" class="danger-button" type="button">Reset Entire Game</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Bracket Source</p>
+              <h2>Season Notes</h2>
+            </div>
+          </div>
+          <p id="source-note" class="hero-copy"></p>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="player-dialog">
+      <form method="dialog" class="dialog-card">
+        <p class="eyebrow">Choose Your Spot</p>
+        <h2>Select your player name</h2>
+        <div id="player-options" class="player-options"></div>
+        <p class="section-note">A device can only hold one player slot after the draft begins.</p>
+        <button class="secondary-button" type="submit">Close</button>
+      </form>
+    </dialog>
+
+    <template id="leaderboard-card-template">
+      <article class="leader-card">
+        <p class="placement"></p>
+        <h3></h3>
+        <p class="score-line"></p>
+        <p class="meta-line"></p>
+      </article>
+    </template>
+
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
