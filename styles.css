@@ -165,7 +165,8 @@ input:disabled {
 .leaderboard-grid,
 .teams-grid,
 .player-boards,
-.admin-grid {
+.admin-grid,
+.player-lobby {
   display: grid;
   gap: 1rem;
 }
@@ -188,6 +189,10 @@ input:disabled {
 }
 
 .teams-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.player-lobby {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
@@ -244,6 +249,12 @@ input:disabled {
   flex-wrap: wrap;
   gap: 0.65rem;
   min-height: 52px;
+  margin-bottom: 1rem;
+}
+
+.draft-actions {
+  display: flex;
+  justify-content: flex-end;
   margin-bottom: 1rem;
 }
 

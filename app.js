@@ -30,11 +30,13 @@ const elements = {
   authStatus: document.querySelector("#auth-status"),
   setupPanel: document.querySelector("#setup-panel"),
   leaderboard: document.querySelector("#leaderboard"),
+  playerLobby: document.querySelector("#player-lobby"),
   currentPlayerName: document.querySelector("#current-player-name"),
   switchPlayerButton: document.querySelector("#switch-player-button"),
   commissionerButton: document.querySelector("#commissioner-button"),
   commissionerStatus: document.querySelector("#commissioner-status"),
   draftStatus: document.querySelector("#draft-status"),
+  startDraftButton: document.querySelector("#start-draft-button"),
   turnStrip: document.querySelector("#turn-strip"),
   availableTeams: document.querySelector("#available-teams"),
   myTeamList: document.querySelector("#my-team-list"),
@@ -112,6 +114,7 @@ function createDefaultGameState() {
       { id: "gsw", name: "Golden State Warriors", conference: "West", slot: "Play-In 10", wins: 0, losses: 0 }
     ],
     picks: [],
+    draftStarted: false,
     finalsPredictions: {},
     championTeamId: null,
     updatedAt: null
@@ -165,7 +168,7 @@ function buildDerivedGame(game) {
   }
 
   const draftedTeamIds = new Set(game.picks.map((pick) => pick.teamId));
-  const currentTurn = turns[game.picks.length] || null;
+  const currentTurn = game.draftStarted ? turns[game.picks.length] || null : null;
 
   const leaderboard = game.players
     .map((player) => {
@@ -206,6 +209,7 @@ function buildDerivedGame(game) {
     derived: {
       turns,
       currentTurn,
+      claimedPlayers: game.players.filter((player) => player.claimedBy).length,
       draftComplete: game.picks.length >= turns.length,
       draftedTeamIds: Array.from(draftedTeamIds),
       availableTeams: game.teams.filter((team) => !draftedTeamIds.has(team.id)),
@@ -319,6 +323,7 @@ async function makePick(teamId) {
     const game = buildDerivedGame(snapshot.data());
     const player = game.players.find((entry) => entry.id === selectedPlayer.id);
     assert(player?.claimedBy === state.authUser.uid, "This device does not own that player slot.");
+    assert(game.draftStarted, "The draft has not been started yet.");
     assert(!game.derived.draftComplete, "The draft is already complete.");
     assert(game.derived.currentTurn.playerId === selectedPlayer.id, "It is not your turn.");
     assert(game.teams.some((team) => team.id === teamId), "Unknown team.");
@@ -333,6 +338,24 @@ async function makePick(teamId) {
 
     transaction.update(state.gameRef, {
       picks,
+      updatedAt: serverTimestamp()
+    });
+  });
+}
+
+async function startDraft() {
+  requireCommissioner();
+
+  await runTransaction(state.db, async (transaction) => {
+    const snapshot = await transaction.get(state.gameRef);
+    assert(snapshot.exists(), "Game setup is missing.");
+
+    const game = snapshot.data();
+    assert(!game.draftStarted, "The draft has already started.");
+    assert(game.players.every((player) => player.claimedBy), "All four players need to claim their slot first.");
+
+    transaction.update(state.gameRef, {
+      draftStarted: true,
       updatedAt: serverTimestamp()
     });
   });
@@ -378,7 +401,7 @@ async function saveNames(names) {
     assert(snapshot.exists(), "Game setup is missing.");
 
     const game = snapshot.data();
-    assert(game.picks.length === 0, "Names can only be changed before the first pick.");
+    assert(!game.draftStarted && game.picks.length === 0, "Names can only be changed before the draft starts.");
     assert(names.length === game.players.length, "Exactly four player names are required.");
     assert(names.every(Boolean), "Every player needs a name.");
 
@@ -514,6 +537,11 @@ function renderTurnStrip() {
 function renderDraftStatus() {
   const selectedPlayer = getSelectedPlayer();
 
+  if (!state.game.draftStarted) {
+    elements.draftStatus.textContent = `Waiting to start. ${state.game.derived.claimedPlayers}/4 players have claimed their slot.`;
+    return;
+  }
+
   if (state.game.derived.draftComplete) {
     elements.draftStatus.textContent = "Draft complete. Finals picks are open.";
     return;
@@ -526,6 +554,38 @@ function renderDraftStatus() {
       : `${currentPlayer.name} is on the clock for Round ${state.game.derived.currentTurn.round}.`;
 }
 
+function renderPlayerLobby() {
+  elements.playerLobby.innerHTML = "";
+
+  state.game.players.forEach((player) => {
+    const isMine = player.claimedBy === state.authUser?.uid;
+    const isTaken = Boolean(player.claimedBy && !isMine);
+    const card = document.createElement("article");
+    card.className = "team-card";
+    card.innerHTML = `
+      <div>
+        <h3>${player.name}</h3>
+        <p class="seed-line">${isMine ? "Claimed on this device" : isTaken ? "Claimed on another device" : "Available to claim"}</p>
+      </div>
+    `;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.disabled = isTaken;
+    button.textContent = isMine ? "You Are This Player" : "Claim This Player";
+    button.addEventListener("click", async () => {
+      try {
+        await claimPlayer(player.id);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    card.appendChild(button);
+    elements.playerLobby.appendChild(card);
+  });
+}
+
 function renderTeams() {
   elements.availableTeams.innerHTML = "";
   const selectedPlayer = getSelectedPlayer();
@@ -535,6 +595,7 @@ function renderTeams() {
     currentTurn &&
     currentTurn.playerId === selectedPlayer.id &&
     selectedPlayer.claimedBy === state.authUser?.uid &&
+    state.game.draftStarted &&
     !state.game.derived.draftComplete;
 
   const teams = state.game.derived.availableTeams.slice().sort((left, right) => {
@@ -677,11 +738,11 @@ function renderNameEditor() {
     const input = document.createElement("input");
     input.type = "text";
     input.value = player.name;
-    input.disabled = !state.commissionerUnlocked || state.game.picks.length > 0;
+    input.disabled = !state.commissionerUnlocked || state.game.draftStarted || state.game.picks.length > 0;
     elements.nameEditor.appendChild(input);
   });
 
-  elements.saveNamesButton.disabled = !state.commissionerUnlocked || state.game.picks.length > 0;
+  elements.saveNamesButton.disabled = !state.commissionerUnlocked || state.game.draftStarted || state.game.picks.length > 0;
 }
 
 function renderChampionControls() {
@@ -749,6 +810,13 @@ function renderCommissionerStatus() {
     : '<span class="locked-note">Locked.</span> Use the Commissioner button to unlock this device.';
 }
 
+function renderStartButton() {
+  const readyToStart = state.game.players.every((player) => player.claimedBy);
+  elements.startDraftButton.disabled =
+    !state.commissionerUnlocked || state.game.draftStarted || !readyToStart;
+  elements.startDraftButton.textContent = state.game.draftStarted ? "Snake Draft Started" : "Start Snake Draft";
+}
+
 function renderDialog() {
   elements.playerOptions.innerHTML = "";
 
@@ -786,8 +854,10 @@ function renderDialog() {
 function render() {
   renderIdentity();
   renderLeaderboard();
+  renderPlayerLobby();
   renderTurnStrip();
   renderDraftStatus();
+  renderStartButton();
   renderTeams();
   renderMyTeams();
   renderPlayerBoards();
@@ -853,6 +923,14 @@ elements.commissionerButton.addEventListener("click", async () => {
   }
 
   await unlockCommissionerMode();
+});
+
+elements.startDraftButton.addEventListener("click", async () => {
+  try {
+    await startDraft();
+  } catch (error) {
+    alert(error.message);
+  }
 });
 
 elements.lockFinalsButton.addEventListener("click", async () => {
