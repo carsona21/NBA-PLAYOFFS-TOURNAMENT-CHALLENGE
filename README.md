@@ -1,45 +1,37 @@
 # NBA Playoffs Challenge
 
-Static GitHub Pages app for a shared NBA playoff snake draft with live scoring.
+Simple static browser app for a four-player NBA playoff snake draft.
 
-## What it does
+## How it works
 
-- Lets four players claim a name once on their device
-- Runs a 4-round snake draft
-- Tracks 2026 postseason team scores as `wins - losses`
-- Adds Finals winner bonuses
-- Shows the shared leaderboard live on every device through Firebase
-
-## Firebase setup
-
-1. Create a Firebase project at `https://console.firebase.google.com/`.
-2. Add a Web App inside that project.
-3. Enable `Authentication` and turn on `Anonymous` sign-in.
-4. Create a `Firestore Database` in production or test mode.
-5. In the Firestore rules screen, paste in [`firestore.rules`](./firestore.rules) and publish them.
-6. Open [`firebase-config.js`](./firebase-config.js) and replace every `REPLACE_ME` value with your Firebase web app config.
-7. Set `commissionerPin` to a simple PIN only your group knows.
-
-## GitHub Pages deploy
-
-1. Push this repo to GitHub.
-2. In the repo settings, open `Pages`.
-3. Set the source to `Deploy from a branch`.
-4. Choose your main branch and the `/ (root)` folder.
-5. Save, then wait for GitHub Pages to publish the site.
-
-Your site URL will look like:
-
-`https://your-username.github.io/your-repo-name/`
+- Pick one of the four players
+- Use Commissioner mode to set names and start the draft
+- Draft 4 teams each in snake order
+- Score teams as `wins - losses`
+- Lock a Finals winner pick after the draft
+- Award `+5` if the player drafted the champion, or `+3` if they predicted the champion without drafting them
 
 ## Important note
 
-This build is designed for a trusted friend group. The Firestore rules allow any signed-in anonymous user to read and write the game document, so it is convenient but not hardened against bad actors. If you want stronger lock-down later, the next upgrade would be Firebase Functions plus stricter auth/rules.
+This version is intentionally simple:
 
-## Files you care about
+- no Firebase
+- no backend
+- no account system
+- no cross-device sync
 
-- [`index.html`](./index.html)
-- [`styles.css`](./styles.css)
-- [`app.js`](./app.js)
-- [`firebase-config.js`](./firebase-config.js)
-- [`firestore.rules`](./firestore.rules)
+The whole game is saved in the browser's local storage, so it works best on one shared device or one shared browser profile.
+
+## Use it
+
+1. Open `index.html` in a browser, or publish the folder with GitHub Pages.
+2. Click `Commissioner` to set a PIN for this browser.
+3. Choose player names if needed.
+4. Start the snake draft.
+5. Update team wins and losses as the playoffs happen.
+
+## Main files
+
+- `index.html`
+- `styles.css`
+- `app.js`

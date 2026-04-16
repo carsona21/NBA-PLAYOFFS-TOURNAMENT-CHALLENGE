@@ -10,16 +10,16 @@
     <div class="page-shell">
       <header class="hero">
         <div>
-          <p class="eyebrow">GitHub Pages + Firebase</p>
+          <p class="eyebrow">Plain Browser App</p>
           <h1>NBA Playoffs Challenge</h1>
           <p class="hero-copy">
-            Claim your player slot once, snake-draft your teams, lock a Finals winner, and keep a shared leaderboard live across every device.
+            Choose a player, run your snake draft, lock a Finals winner, and track the whole bet from one simple browser page.
           </p>
         </div>
         <div class="identity-card">
           <p class="identity-label">Signed in as</p>
           <strong id="current-player-name">Loading...</strong>
-          <p class="section-note" id="auth-status">Connecting to Firebase...</p>
+          <p class="section-note" id="auth-status">Loading saved game...</p>
           <div class="identity-actions">
             <button id="switch-player-button" class="secondary-button" type="button">Choose Player</button>
             <button id="commissioner-button" class="secondary-button" type="button">Commissioner</button>
@@ -28,18 +28,6 @@
       </header>
 
       <main class="layout">
-        <section id="setup-panel" class="panel hidden">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Setup Needed</p>
-              <h2>Firebase Config Missing</h2>
-            </div>
-          </div>
-          <p class="hero-copy">
-            Add your Firebase project settings in <code>firebase-config.js</code>, enable Anonymous Auth and Firestore, then refresh this page.
-          </p>
-        </section>
-
         <section class="panel">
           <div class="section-heading">
             <div>
@@ -179,7 +167,6 @@
       </article>
     </template>
 
-    <script src="./firebase-config.js"></script>
-    <script type="module" src="./app.js"></script>
+    <script src="./app.js"></script>
   </body>
 </html>
