@@ -1,0 +1,13 @@
+<svg width="96" height="120" viewBox="0 0 96 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="88" height="112" rx="18" fill="#F8F4EC" stroke="#13212F" stroke-width="4"/>
+  <rect x="12" y="12" width="24" height="96" rx="12" fill="#C63C31"/>
+  <rect x="60" y="12" width="24" height="96" rx="12" fill="#1D428A"/>
+  <path d="M46 22C42 34 40 48 40 60C40 72 42 86 46 98" stroke="#13212F" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="49" cy="33" r="6" fill="#13212F"/>
+  <path d="M49 40V61" stroke="#13212F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M49 50L60 60" stroke="#13212F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M49 50L38 61" stroke="#13212F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M49 61L58 78" stroke="#13212F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M49 61L40 79" stroke="#13212F" stroke-width="5" stroke-linecap="round"/>
+  <text x="48" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#13212F">NBA</text>
+</svg>

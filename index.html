@@ -10,10 +10,16 @@
     <div class="page-shell">
       <header class="hero">
         <div>
+          <div class="hero-brand">
+            <img src="./nba-badge.svg" alt="NBA badge" class="hero-logo">
+          </div>
           <p class="eyebrow">Plain Browser App</p>
           <h1>NBA Playoffs Challenge</h1>
           <p class="hero-copy">
             Choose a player, run your snake draft, lock a Finals winner, and track the whole bet from one simple browser page.
+          </p>
+          <p class="hero-copy page-note">
+            After the draft is completed, the normal site URL switches over to the live totals page automatically.
           </p>
         </div>
         <div class="identity-card">
@@ -59,6 +65,7 @@
             <p class="section-note" id="draft-status"></p>
           </div>
           <div class="draft-actions">
+            <button id="random-order-button" class="secondary-button" type="button">Randomize Draft Order</button>
             <button id="start-draft-button" type="button">Start Snake Draft</button>
           </div>
           <div id="turn-strip" class="turn-strip"></div>

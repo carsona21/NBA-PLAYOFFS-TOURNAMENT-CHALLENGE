@@ -1,12 +1,15 @@
 const GAME_STORAGE_KEY = "nba-playoffs-challenge-state";
 const PLAYER_STORAGE_KEY = "nba-playoffs-selected-player";
 const COMMISSIONER_STORAGE_KEY = "nba-playoffs-commissioner-unlocked";
+const COMMISSIONER_PLAYER_ID = "nosrac";
 
 const state = {
   game: null,
   selectedPlayerId: localStorage.getItem(PLAYER_STORAGE_KEY) || null,
   commissionerUnlocked: localStorage.getItem(COMMISSIONER_STORAGE_KEY) === "true"
 };
+
+const isControlOverride = new URLSearchParams(window.location.search).get("control") === "1";
 
 const elements = {
   leaderboard: document.querySelector("#leaderboard"),
@@ -17,6 +20,7 @@ const elements = {
   commissionerButton: document.querySelector("#commissioner-button"),
   commissionerStatus: document.querySelector("#commissioner-status"),
   draftStatus: document.querySelector("#draft-status"),
+  randomOrderButton: document.querySelector("#random-order-button"),
   startDraftButton: document.querySelector("#start-draft-button"),
   turnStrip: document.querySelector("#turn-strip"),
   availableTeams: document.querySelector("#available-teams"),
@@ -112,6 +116,14 @@ function setSelectedPlayer(playerId) {
 
 function getSelectedPlayer() {
   return state.game.players.find((player) => player.id === state.selectedPlayerId) || null;
+}
+
+function isPlayerLocked() {
+  return Boolean(state.selectedPlayerId);
+}
+
+function isCommissionerPlayer() {
+  return state.selectedPlayerId === COMMISSIONER_PLAYER_ID;
 }
 
 function getPlayerById(playerId) {
@@ -214,18 +226,46 @@ function timestampToLabel(value) {
 function saveAndRender() {
   saveGame();
   refreshDerivedState();
+  redirectToLiveTotalsIfNeeded();
   render();
 }
 
+function redirectToLiveTotalsIfNeeded() {
+  const onLivePage = window.location.pathname.endsWith("/live.html");
+  if (!onLivePage && !isControlOverride && state.game.derived?.draftComplete) {
+    window.location.href = "./live.html";
+  }
+}
+
 function claimPlayer(playerId) {
+  if (isPlayerLocked() && state.selectedPlayerId !== playerId) {
+    throw new Error("This browser is already locked to a player.");
+  }
+
   setSelectedPlayer(playerId);
   render();
 }
 
 function startDraft() {
   assert(state.commissionerUnlocked, "Unlock commissioner mode first.");
+  assert(isCommissionerPlayer(), "Only Nosrac can use commissioner controls.");
   assert(!state.game.draftStarted, "The draft has already started.");
   state.game.draftStarted = true;
+  saveAndRender();
+}
+
+function randomizeDraftOrder() {
+  assert(state.commissionerUnlocked, "Unlock commissioner mode first.");
+  assert(isCommissionerPlayer(), "Only Nosrac can use commissioner controls.");
+  assert(!state.game.draftStarted, "You can only randomize order before the draft starts.");
+
+  const shuffled = [...state.game.draftOrder];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  state.game.draftOrder = shuffled;
   saveAndRender();
 }
 
@@ -259,6 +299,7 @@ function lockFinalsPick(teamId) {
 
 function saveNames(names) {
   assert(state.commissionerUnlocked, "Unlock commissioner mode first.");
+  assert(isCommissionerPlayer(), "Only Nosrac can use commissioner controls.");
   assert(!state.game.draftStarted && state.game.picks.length === 0, "Names can only change before the draft starts.");
   assert(names.every(Boolean), "Every player needs a name.");
 
@@ -272,12 +313,14 @@ function saveNames(names) {
 
 function saveChampion(teamId) {
   assert(state.commissionerUnlocked, "Unlock commissioner mode first.");
+  assert(isCommissionerPlayer(), "Only Nosrac can use commissioner controls.");
   state.game.championTeamId = teamId;
   saveAndRender();
 }
 
 function saveTeamScore(teamId, wins, losses) {
   assert(state.commissionerUnlocked, "Unlock commissioner mode first.");
+  assert(isCommissionerPlayer(), "Only Nosrac can use commissioner controls.");
   assert(Number.isInteger(wins) && wins >= 0, "Wins must be a whole number.");
   assert(Number.isInteger(losses) && losses >= 0, "Losses must be a whole number.");
 
@@ -289,6 +332,8 @@ function saveTeamScore(teamId, wins, losses) {
 }
 
 function resetGame() {
+  assert(state.commissionerUnlocked, "Unlock commissioner mode first.");
+  assert(isCommissionerPlayer(), "Only Nosrac can use commissioner controls.");
   const names = state.game.players.map((player) => player.name);
   state.game = createDefaultGameState();
   state.game.players = state.game.players.map((player, index) => ({
@@ -313,6 +358,13 @@ function renderLeaderboard() {
 }
 
 function renderPlayerLobby() {
+  const lobbySection = elements.playerLobby.closest(".panel");
+  const locked = isPlayerLocked();
+
+  if (lobbySection) {
+    lobbySection.style.display = locked ? "none" : "";
+  }
+
   elements.playerLobby.innerHTML = "";
 
   state.game.players.forEach((player) => {
@@ -321,14 +373,21 @@ function renderPlayerLobby() {
     card.innerHTML = `
       <div>
         <h3>${player.name}</h3>
-        <p class="seed-line">${state.selectedPlayerId === player.id ? "Selected in this browser" : "Available"}</p>
+        <p class="seed-line">${state.selectedPlayerId === player.id ? "Locked in this browser" : locked ? "Unavailable in this browser" : "Available"}</p>
       </div>
     `;
 
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = state.selectedPlayerId === player.id ? "Current Player" : "Choose This Player";
-    button.addEventListener("click", () => claimPlayer(player.id));
+    button.disabled = locked && state.selectedPlayerId !== player.id;
+    button.textContent = state.selectedPlayerId === player.id ? "Locked Player" : "Choose This Player";
+    button.addEventListener("click", () => {
+      try {
+        claimPlayer(player.id);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
     card.appendChild(button);
     elements.playerLobby.appendChild(card);
   });
@@ -371,7 +430,8 @@ function renderDraftStatus() {
 }
 
 function renderStartButton() {
-  elements.startDraftButton.disabled = !state.commissionerUnlocked || state.game.draftStarted;
+  elements.randomOrderButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer() || state.game.draftStarted;
+  elements.startDraftButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer() || state.game.draftStarted;
   elements.startDraftButton.textContent = state.game.draftStarted ? "Snake Draft Started" : "Start Snake Draft";
 }
 
@@ -499,10 +559,10 @@ function renderNameEditor() {
     const input = document.createElement("input");
     input.type = "text";
     input.value = player.name;
-    input.disabled = !state.commissionerUnlocked || state.game.draftStarted;
+    input.disabled = !state.commissionerUnlocked || !isCommissionerPlayer() || state.game.draftStarted;
     elements.nameEditor.appendChild(input);
   });
-  elements.saveNamesButton.disabled = !state.commissionerUnlocked || state.game.draftStarted;
+  elements.saveNamesButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer() || state.game.draftStarted;
 }
 
 function renderChampionControls() {
@@ -510,9 +570,9 @@ function renderChampionControls() {
     .concat(state.game.teams.map((team) => `<option value="${team.id}">${team.name}</option>`))
     .join("");
   elements.championSelect.value = state.game.championTeamId || "";
-  elements.championSelect.disabled = !state.commissionerUnlocked;
-  elements.saveChampionButton.disabled = !state.commissionerUnlocked;
-  elements.clearChampionButton.disabled = !state.commissionerUnlocked;
+  elements.championSelect.disabled = !state.commissionerUnlocked || !isCommissionerPlayer();
+  elements.saveChampionButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer();
+  elements.clearChampionButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer();
 }
 
 function renderScoreTable() {
@@ -521,19 +581,23 @@ function renderScoreTable() {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${team.name}<div class="section-note">${team.conference} ${team.slot}</div></td>
-      <td><input class="score-input" type="number" min="0" value="${team.wins}" data-team-id="${team.id}" data-field="wins" ${state.commissionerUnlocked ? "" : "disabled"}></td>
-      <td><input class="score-input" type="number" min="0" value="${team.losses}" data-team-id="${team.id}" data-field="losses" ${state.commissionerUnlocked ? "" : "disabled"}></td>
-      <td class="score-actions"><button type="button" data-save-score="${team.id}" ${state.commissionerUnlocked ? "" : "disabled"}>Save</button></td>
+      <td><input class="score-input" type="number" min="0" value="${team.wins}" data-team-id="${team.id}" data-field="wins" ${state.commissionerUnlocked && isCommissionerPlayer() ? "" : "disabled"}></td>
+      <td><input class="score-input" type="number" min="0" value="${team.losses}" data-team-id="${team.id}" data-field="losses" ${state.commissionerUnlocked && isCommissionerPlayer() ? "" : "disabled"}></td>
+      <td class="score-actions"><button type="button" data-save-score="${team.id}" ${state.commissionerUnlocked && isCommissionerPlayer() ? "" : "disabled"}>Save</button></td>
     `;
     elements.scoreTableBody.appendChild(row);
   });
-  elements.resetButton.disabled = !state.commissionerUnlocked;
+  elements.resetButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer();
 }
 
 function renderIdentity() {
   const selectedPlayer = getSelectedPlayer();
   elements.currentPlayerName.textContent = selectedPlayer ? selectedPlayer.name : "No player chosen";
-  elements.authStatus.textContent = "Saved in this browser only";
+  elements.authStatus.textContent = selectedPlayer
+    ? "Locked to this browser"
+    : "Pick a player to lock this browser";
+  elements.switchPlayerButton.style.display = selectedPlayer ? "none" : "";
+  elements.commissionerButton.style.display = isCommissionerPlayer() ? "" : "none";
 }
 
 function renderSourceNote() {
@@ -542,21 +606,37 @@ function renderSourceNote() {
 }
 
 function renderCommissionerStatus() {
+  if (!isCommissionerPlayer()) {
+    elements.commissionerStatus.innerHTML = "Only the browser locked to Nosrac can use commissioner controls.";
+    return;
+  }
+
   elements.commissionerStatus.innerHTML = state.commissionerUnlocked
-    ? "Unlocked on this browser."
+    ? "Unlocked on this browser for Nosrac."
     : '<span class="locked-note">Locked.</span> Use the Commissioner button to unlock commissioner controls.';
 }
 
 function renderDialog() {
+  if (isPlayerLocked()) {
+    if (elements.playerDialog.open) {
+      elements.playerDialog.close();
+    }
+    return;
+  }
+
   elements.playerOptions.innerHTML = "";
   state.game.players.forEach((player) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "player-option";
-    button.innerHTML = `<strong>${player.name}</strong><span class="status-tag">${state.selectedPlayerId === player.id ? "Current" : "Available"}</span>`;
+    button.innerHTML = `<strong>${player.name}</strong><span class="status-tag">Available</span>`;
     button.addEventListener("click", () => {
-      claimPlayer(player.id);
-      elements.playerDialog.close();
+      try {
+        claimPlayer(player.id);
+        elements.playerDialog.close();
+      } catch (error) {
+        alert(error.message);
+      }
     });
     elements.playerOptions.appendChild(button);
   });
@@ -587,6 +667,11 @@ elements.switchPlayerButton.addEventListener("click", () => {
 });
 
 elements.commissionerButton.addEventListener("click", () => {
+  if (!isCommissionerPlayer()) {
+    alert("Only the browser locked to Nosrac can use commissioner controls.");
+    return;
+  }
+
   if (state.commissionerUnlocked) {
     setCommissionerUnlocked(false);
     render();
@@ -615,6 +700,14 @@ elements.commissionerButton.addEventListener("click", () => {
 elements.startDraftButton.addEventListener("click", () => {
   try {
     startDraft();
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+elements.randomOrderButton.addEventListener("click", () => {
+  try {
+    randomizeDraftOrder();
   } catch (error) {
     alert(error.message);
   }
@@ -684,4 +777,5 @@ elements.resetButton.addEventListener("click", () => {
 
 loadGame();
 refreshDerivedState();
+redirectToLiveTotalsIfNeeded();
 render();

@@ -95,6 +95,17 @@ input:disabled {
   margin-bottom: 0.75rem;
 }
 
+.hero-brand {
+  margin-bottom: 0.9rem;
+}
+
+.hero-logo {
+  width: 72px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(19, 33, 47, 0.12));
+}
+
 .eyebrow {
   margin: 0 0 0.5rem;
   font-size: 0.82rem;
@@ -110,6 +121,12 @@ input:disabled {
 .meta-line {
   margin: 0;
   line-height: 1.5;
+}
+
+.page-note {
+  margin-top: 0.85rem;
+  max-width: 44rem;
+  color: rgba(19, 33, 47, 0.78);
 }
 
 .identity-card,
@@ -139,6 +156,24 @@ input:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+}
+
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.85rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 700;
+  background: transparent;
+}
+
+.secondary-link:hover {
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .layout {
@@ -327,6 +362,7 @@ input:disabled {
 .score-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 560px;
 }
 
 .score-table th,
@@ -404,5 +440,87 @@ code {
   .hero,
   .two-column {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    width: min(100% - 1rem, 100%);
+    padding: 1rem 0 2.5rem;
+  }
+
+  .panel,
+  .identity-card,
+  .dialog-card {
+    border-radius: 20px;
+  }
+
+  .panel,
+  .identity-card {
+    padding: 1rem;
+  }
+
+  .hero {
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  .hero-logo {
+    width: 60px;
+  }
+
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+  }
+
+  .identity-actions,
+  .draft-actions,
+  .reset-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .identity-actions button,
+  .draft-actions button,
+  .reset-row button,
+  .team-card button,
+  .admin-card button,
+  .finals-box button,
+  .player-option {
+    width: 100%;
+  }
+
+  .leaderboard-grid,
+  .teams-grid,
+  .player-lobby,
+  .player-boards,
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .chip-list {
+    gap: 0.5rem;
+  }
+
+  .chip {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .score-table th,
+  .score-table td {
+    padding: 0.7rem 0.5rem;
+    font-size: 0.92rem;
   }
 }
