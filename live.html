@@ -3,71 +3,57 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NBA Playoffs Challenge Live Totals</title>
+    <title>NBA Playoffs Challenge Results Board</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
-  <body>
+  <body class="results-body">
     <div class="page-shell">
-      <header class="hero live-hero">
-        <div>
+      <header class="results-hero">
+        <div class="results-hero-copy">
           <div class="hero-brand">
             <img src="./nba-badge.svg" alt="NBA badge" class="hero-logo">
           </div>
-          <p class="eyebrow">Live Totals</p>
-          <h1>Playoff Leaderboard</h1>
+          <p class="eyebrow">Results Snapshot</p>
+          <h1>Finished draft, live playoff scoring</h1>
           <p class="hero-copy">
-            This page is the live scoring board for the bet. Team points and Finals bonuses are combined here.
+            This page is the viewing board for the bet. Every player total updates from the drafted teams below.
           </p>
+          <div class="results-pill-row">
+            <span class="results-pill">Draft locked</span>
+            <span class="results-pill">Live point totals</span>
+            <span class="results-pill">Built for viewing</span>
+          </div>
         </div>
-        <div class="identity-card">
-          <p class="identity-label">Current view</p>
-          <strong>Live Totals Page</strong>
+        <div class="results-sidecard">
+          <p class="identity-label">Board status</p>
+          <strong>Live totals page</strong>
           <p class="section-note" id="live-last-updated">Loading saved game...</p>
-          <a class="secondary-link" href="./index.html?control=1">Open Draft Control Page</a>
+          <a class="secondary-link" href="./index.html?control=1">Open Control Room</a>
         </div>
       </header>
 
       <main class="layout">
-        <section class="panel">
+        <section class="panel results-summary-panel">
           <div class="section-heading">
             <div>
               <p class="eyebrow">Standings</p>
-              <h2>Total Points</h2>
+              <h2>Current Order</h2>
             </div>
           </div>
-          <div id="live-leaderboard" class="leaderboard-grid"></div>
+          <div id="live-standings-strip" class="results-standings-strip"></div>
         </section>
 
-        <section class="panel">
+        <section class="panel results-board-panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Draft Results</p>
-              <h2>Everyone's Teams</h2>
+              <p class="eyebrow">Team Tracker</p>
+              <h2>Each Player's Drafted Teams</h2>
             </div>
           </div>
-          <div id="live-player-boards" class="player-boards"></div>
-        </section>
-
-        <section class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Scoring</p>
-              <h2>Team Totals</h2>
-            </div>
-          </div>
-          <div id="live-team-grid" class="teams-grid"></div>
+          <div id="live-squad-grid" class="results-squad-grid"></div>
         </section>
       </main>
     </div>
-
-    <template id="live-leaderboard-card-template">
-      <article class="leader-card">
-        <p class="placement"></p>
-        <h3></h3>
-        <p class="score-line"></p>
-        <p class="meta-line"></p>
-      </article>
-    </template>
 
     <script src="./live.js"></script>
   </body>

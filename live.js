@@ -2,10 +2,8 @@ const GAME_STORAGE_KEY = "nba-playoffs-challenge-state";
 
 const elements = {
   lastUpdated: document.querySelector("#live-last-updated"),
-  leaderboard: document.querySelector("#live-leaderboard"),
-  playerBoards: document.querySelector("#live-player-boards"),
-  teamGrid: document.querySelector("#live-team-grid"),
-  leaderboardCardTemplate: document.querySelector("#live-leaderboard-card-template")
+  standingsStrip: document.querySelector("#live-standings-strip"),
+  squadGrid: document.querySelector("#live-squad-grid")
 };
 
 function createDefaultGameState() {
@@ -112,6 +110,72 @@ function timestampToLabel(value) {
   });
 }
 
+function formatPoints(points) {
+  return points > 0 ? `+${points}` : `${points}`;
+}
+
+function renderStandings(game) {
+  elements.standingsStrip.innerHTML = "";
+
+  game.derived.leaderboard.forEach((entry, index) => {
+    const card = document.createElement("article");
+    card.className = "results-standing-card";
+    card.innerHTML = `
+      <p class="placement">#${index + 1}</p>
+      <h3>${entry.playerName}</h3>
+      <p class="score-line">${formatPoints(entry.totalScore)} pts</p>
+      <p class="meta-line">Teams: ${formatPoints(entry.teamScore)} | Finals bonus: ${formatPoints(entry.finalsBonus)}</p>
+    `;
+    elements.standingsStrip.appendChild(card);
+  });
+}
+
+function renderSquads(game) {
+  elements.squadGrid.innerHTML = "";
+
+  game.derived.leaderboard.forEach((entry, index) => {
+    const card = document.createElement("article");
+    card.className = "results-squad-card";
+    const finalsPickLabel = entry.finalsPick ? getTeamById(game, entry.finalsPick).name : "Not locked";
+
+    card.innerHTML = `
+      <div class="results-squad-header">
+        <div>
+          <p class="results-squad-rank">#${index + 1}</p>
+          <h3>${entry.playerName}</h3>
+          <p class="section-note">Finals pick: ${finalsPickLabel}</p>
+        </div>
+        <div class="results-total-pill">${formatPoints(entry.totalScore)} pts</div>
+      </div>
+      <div class="results-team-list"></div>
+    `;
+
+    const teamList = card.querySelector(".results-team-list");
+
+    entry.teamIds.forEach((teamId) => {
+      const team = getTeamById(game, teamId);
+      const teamPoints = team.wins - team.losses;
+      const teamCard = document.createElement("div");
+      teamCard.className = "results-team-card";
+      teamCard.innerHTML = `
+        <div class="results-team-top">
+          <p class="eyebrow">Team</p>
+          <div class="results-team-points">${formatPoints(teamPoints)} pts</div>
+        </div>
+        <h4>${team.name}</h4>
+        <p class="section-note">${team.conference} ${team.slot}</p>
+        <div class="results-team-meta">
+          <span>${team.wins} wins</span>
+          <span>${team.losses} losses</span>
+        </div>
+      `;
+      teamList.appendChild(teamCard);
+    });
+
+    elements.squadGrid.appendChild(card);
+  });
+}
+
 function render() {
   const game = loadGame();
 
@@ -121,58 +185,10 @@ function render() {
   }
 
   elements.lastUpdated.textContent = `Updated ${timestampToLabel(game.updatedAt)}`;
-  elements.leaderboard.innerHTML = "";
-  elements.playerBoards.innerHTML = "";
-  elements.teamGrid.innerHTML = "";
-
-  game.derived.leaderboard.forEach((entry, index) => {
-    const fragment = elements.leaderboardCardTemplate.content.cloneNode(true);
-    fragment.querySelector(".placement").textContent = `#${index + 1}`;
-    fragment.querySelector("h3").textContent = entry.playerName;
-    fragment.querySelector(".score-line").textContent = `${entry.totalScore} pts total`;
-    fragment.querySelector(".meta-line").textContent =
-      `Team score: ${entry.teamScore} | Finals bonus: ${entry.finalsBonus} | Finals pick: ${entry.finalsPick ? getTeamById(game, entry.finalsPick).name : "Not locked"}`;
-    elements.leaderboard.appendChild(fragment);
-  });
-
-  game.players.forEach((player) => {
-    const standing = game.derived.leaderboard.find((entry) => entry.playerId === player.id);
-    const board = document.createElement("article");
-    board.className = "board-card";
-    const teamIds = game.derived.picksByPlayer[player.id];
-    board.innerHTML = `
-      <h3>${player.name} • ${standing.totalScore} pts</h3>
-      ${teamIds.length
-        ? `<ul>${teamIds.map((teamId) => {
-            const team = getTeamById(game, teamId);
-            const teamPoints = team.wins - team.losses;
-            const teamPointsLabel = teamPoints > 0 ? `+${teamPoints}` : `${teamPoints}`;
-            return `<li>${team.name} • ${teamPointsLabel} pts</li>`;
-          }).join("")}</ul>`
-        : "<p class='section-note'>No teams drafted.</p>"}
-      <p class="section-note">Finals pick: ${game.finalsPredictions[player.id] ? getTeamById(game, game.finalsPredictions[player.id]).name : "Not locked"}</p>
-    `;
-    elements.playerBoards.appendChild(board);
-  });
-
-  game.teams
-    .slice()
-    .sort((left, right) => left.name.localeCompare(right.name))
-    .forEach((team) => {
-      const card = document.createElement("article");
-      card.className = "team-card";
-      card.innerHTML = `
-        <div>
-          <h3>${team.name}</h3>
-          <p class="seed-line">${team.conference} ${team.slot}</p>
-        </div>
-        <div>
-          <p class="score-line">${team.wins - team.losses} pts</p>
-          <p class="meta-line">${team.wins} wins, ${team.losses} losses</p>
-        </div>
-      `;
-      elements.teamGrid.appendChild(card);
-    });
+  renderStandings(game);
+  renderSquads(game);
 }
 
+window.addEventListener("storage", render);
+setInterval(render, 10000);
 render();
