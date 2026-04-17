@@ -261,6 +261,12 @@ input:disabled {
   border: 1px solid rgba(30, 93, 56, 0.18);
 }
 
+.results-standing-card.is-viewer,
+.results-squad-card.is-viewer {
+  border-color: rgba(217, 111, 50, 0.5);
+  box-shadow: 0 0 0 3px rgba(217, 111, 50, 0.18), var(--shadow);
+}
+
 .results-squad-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }

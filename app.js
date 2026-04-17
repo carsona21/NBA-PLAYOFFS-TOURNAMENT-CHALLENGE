@@ -126,10 +126,6 @@ function getSelectedPlayer() {
   return state.game.players.find((player) => player.id === state.selectedPlayerId) || null;
 }
 
-function isPlayerLocked() {
-  return Boolean(state.selectedPlayerId);
-}
-
 function isCommissionerPlayer() {
   return state.selectedPlayerId === COMMISSIONER_PLAYER_ID;
 }
@@ -271,11 +267,12 @@ function redirectToLiveTotalsIfNeeded() {
 }
 
 function claimPlayer(playerId) {
-  if (isPlayerLocked() && state.selectedPlayerId !== playerId) {
-    throw new Error("This browser is already locked to a player.");
+  setSelectedPlayer(playerId);
+  if (state.game.derived?.draftComplete && state.game.derived?.allFinalsPicksLocked && !isControlOverride) {
+    window.location.href = `./live.html?viewer=${playerId}`;
+    return;
   }
 
-  setSelectedPlayer(playerId);
   render();
 }
 
@@ -391,8 +388,6 @@ function renderLeaderboard() {
 }
 
 function renderPlayerLobby() {
-  const locked = isPlayerLocked();
-
   elements.playerLobby.innerHTML = "";
 
   state.game.players.forEach((player) => {
@@ -401,14 +396,13 @@ function renderPlayerLobby() {
     card.innerHTML = `
       <div>
         <h3>${player.name}</h3>
-        <p class="seed-line">${state.selectedPlayerId === player.id ? "Locked in this browser" : locked ? "Unavailable in this browser" : "Available"}</p>
+        <p class="seed-line">${state.selectedPlayerId === player.id ? "Currently selected" : "Available"}</p>
       </div>
     `;
 
     const button = document.createElement("button");
     button.type = "button";
-    button.disabled = locked && state.selectedPlayerId !== player.id;
-    button.textContent = state.selectedPlayerId === player.id ? "Locked Player" : "Choose This Player";
+    button.textContent = state.selectedPlayerId === player.id ? "Current Player" : "Choose This Player";
     button.addEventListener("click", () => {
       try {
         claimPlayer(player.id);
@@ -645,9 +639,9 @@ function renderIdentity() {
   const selectedPlayer = getSelectedPlayer();
   elements.currentPlayerName.textContent = selectedPlayer ? selectedPlayer.name : "No player chosen";
   elements.authStatus.textContent = selectedPlayer
-    ? "Locked to this browser"
-    : "Pick a player to lock this browser";
-  elements.switchPlayerButton.style.display = selectedPlayer ? "none" : "";
+    ? "Current viewer"
+    : "Pick a player";
+  elements.switchPlayerButton.style.display = "";
   elements.commissionerButton.style.display = isCommissionerPlayer() ? "" : "none";
 }
 
@@ -662,7 +656,7 @@ function renderPageMode() {
     elements.leaderboard.closest(".panel").style.display = "none";
   }
 
-  elements.playerLobbyPanel.style.display = preDraftMode && !isPlayerLocked() ? "" : "none";
+  elements.playerLobbyPanel.style.display = "";
   elements.playerSummaryPanel.style.display = preDraftMode ? "none" : "";
   elements.notesPanel.style.display = preDraftMode ? "none" : "";
 
@@ -691,19 +685,12 @@ function renderCommissionerStatus() {
 }
 
 function renderDialog() {
-  if (isPlayerLocked()) {
-    if (elements.playerDialog.open) {
-      elements.playerDialog.close();
-    }
-    return;
-  }
-
   elements.playerOptions.innerHTML = "";
   state.game.players.forEach((player) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "player-option";
-    button.innerHTML = `<strong>${player.name}</strong><span class="status-tag">Available</span>`;
+    button.innerHTML = `<strong>${player.name}</strong><span class="status-tag">${state.selectedPlayerId === player.id ? "Current" : "Choose"}</span>`;
     button.addEventListener("click", () => {
       try {
         claimPlayer(player.id);

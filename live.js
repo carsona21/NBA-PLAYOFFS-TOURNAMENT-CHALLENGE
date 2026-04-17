@@ -4,12 +4,15 @@ const PLAYOFF_END_DATE = "2026-06-30";
 const ESPN_SCOREBOARD_ENDPOINT = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard";
 
 const elements = {
+  viewerLabel: document.querySelector("#live-viewer-label"),
   lastUpdated: document.querySelector("#live-last-updated"),
   sourceStatus: document.querySelector("#live-source-status"),
   refreshButton: document.querySelector("#live-refresh-button"),
   standingsStrip: document.querySelector("#live-standings-strip"),
   squadGrid: document.querySelector("#live-squad-grid")
 };
+
+const viewerId = new URLSearchParams(window.location.search).get("viewer") || localStorage.getItem("nba-playoffs-selected-player") || "";
 
 function createDefaultGameState() {
   return {
@@ -321,6 +324,9 @@ function renderStandings(leaderboard) {
   leaderboard.forEach((entry, index) => {
     const card = document.createElement("article");
     card.className = "results-standing-card";
+    if (entry.playerId === viewerId) {
+      card.classList.add("is-viewer");
+    }
     card.innerHTML = `
       <p class="placement">#${index + 1}</p>
       <h3>${entry.playerName}</h3>
@@ -337,6 +343,9 @@ function renderSquads(game, leaderboard, teamStats) {
   leaderboard.forEach((entry, index) => {
     const card = document.createElement("article");
     card.className = "results-squad-card";
+    if (entry.playerId === viewerId) {
+      card.classList.add("is-viewer");
+    }
     const finalsPickLabel = entry.finalsPick ? getTeamById(game, entry.finalsPick).name : "Not locked";
 
     card.innerHTML = `
@@ -386,6 +395,8 @@ async function render() {
     return;
   }
 
+  const viewerName = game.players.find((player) => player.id === viewerId)?.name;
+  elements.viewerLabel.textContent = viewerName ? `Highlighted viewer: ${viewerName}` : "Viewing all players";
   elements.refreshButton.disabled = true;
   elements.lastUpdated.textContent = `Draft saved ${timestampToLabel(game.updatedAt)}`;
   elements.sourceStatus.textContent = "Refreshing ESPN playoff results...";
