@@ -1,7 +1,12 @@
 const GAME_STORAGE_KEY = "nba-playoffs-challenge-state";
+const PLAYOFF_START_DATE = "2026-04-14";
+const PLAYOFF_END_DATE = "2026-06-30";
+const ESPN_SCOREBOARD_ENDPOINT = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard";
 
 const elements = {
   lastUpdated: document.querySelector("#live-last-updated"),
+  sourceStatus: document.querySelector("#live-source-status"),
+  refreshButton: document.querySelector("#live-refresh-button"),
   standingsStrip: document.querySelector("#live-standings-strip"),
   squadGrid: document.querySelector("#live-squad-grid")
 };
@@ -45,19 +50,239 @@ function buildSnakeTurns(order, rounds) {
 function buildDerivedGame(game) {
   const turns = buildSnakeTurns(game.draftOrder, game.settings.teamsPerPlayer);
   const picksByPlayer = Object.fromEntries(game.players.map((player) => [player.id, []]));
-  const teamsById = Object.fromEntries(game.teams.map((team) => [team.id, team]));
 
   for (const pick of game.picks) {
     picksByPlayer[pick.playerId].push(pick.teamId);
   }
 
-  const leaderboard = game.players
+  return {
+    ...game,
+    derived: {
+      draftComplete: game.picks.length >= turns.length,
+      picksByPlayer
+    }
+  };
+}
+
+function loadGame() {
+  const saved = localStorage.getItem(GAME_STORAGE_KEY);
+  return buildDerivedGame(saved ? JSON.parse(saved) : createDefaultGameState());
+}
+
+function timestampToLabel(value) {
+  return new Date(value).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
+function formatPoints(points) {
+  return points > 0 ? `+${points}` : `${points}`;
+}
+
+function toDateToken(date) {
+  return date.toISOString().slice(0, 10).replaceAll("-", "");
+}
+
+function getDateWindow() {
+  const start = new Date(`${PLAYOFF_START_DATE}T00:00:00`);
+  const endCap = new Date(`${PLAYOFF_END_DATE}T23:59:59`);
+  const today = new Date();
+  const end = today < endCap ? today : endCap;
+
+  return {
+    startToken: toDateToken(start),
+    endToken: toDateToken(end)
+  };
+}
+
+function enumerateDateTokens(startToken, endToken) {
+  const tokens = [];
+  const start = new Date(`${startToken.slice(0, 4)}-${startToken.slice(4, 6)}-${startToken.slice(6, 8)}T00:00:00`);
+  const end = new Date(`${endToken.slice(0, 4)}-${endToken.slice(4, 6)}-${endToken.slice(6, 8)}T00:00:00`);
+
+  for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    tokens.push(toDateToken(cursor));
+  }
+
+  return tokens;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`ESPN request failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+async function fetchScoreboardEvents() {
+  const { startToken, endToken } = getDateWindow();
+
+  try {
+    const rangeUrl = `${ESPN_SCOREBOARD_ENDPOINT}?dates=${startToken}-${endToken}&limit=1000`;
+    const payload = await fetchJson(rangeUrl);
+    if (Array.isArray(payload.events) && payload.events.length > 0) {
+      return {
+        events: payload.events,
+        sourceLabel: `Auto scoring from ESPN scoreboard range ${startToken}-${endToken}`
+      };
+    }
+  } catch (error) {
+    // Fall back to per-day fetches below.
+  }
+
+  const tokens = enumerateDateTokens(startToken, endToken);
+  const dailyPayloads = await Promise.all(
+    tokens.map(async (token) => {
+      const payload = await fetchJson(`${ESPN_SCOREBOARD_ENDPOINT}?dates=${token}&limit=200`);
+      return payload.events || [];
+    })
+  );
+
+  return {
+    events: dailyPayloads.flat(),
+    sourceLabel: `Auto scoring from ESPN daily scoreboards ${startToken}-${endToken}`
+  };
+}
+
+function normalizeTeamName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function buildTeamAliasMap(game) {
+  return Object.fromEntries(
+    game.teams.map((team) => {
+      const aliases = new Set([team.name]);
+
+      if (team.name === "Los Angeles Lakers") {
+        aliases.add("Lakers");
+      }
+      if (team.name === "Oklahoma City Thunder") {
+        aliases.add("Thunder");
+      }
+      if (team.name === "San Antonio Spurs") {
+        aliases.add("Spurs");
+      }
+      if (team.name === "Denver Nuggets") {
+        aliases.add("Nuggets");
+      }
+      if (team.name === "Houston Rockets") {
+        aliases.add("Rockets");
+      }
+      if (team.name === "Minnesota Timberwolves") {
+        aliases.add("Timberwolves");
+        aliases.add("Wolves");
+      }
+      if (team.name === "Phoenix Suns") {
+        aliases.add("Suns");
+      }
+      if (team.name === "Portland Trail Blazers") {
+        aliases.add("Trail Blazers");
+        aliases.add("Blazers");
+      }
+      if (team.name === "Detroit Pistons") {
+        aliases.add("Pistons");
+      }
+      if (team.name === "Boston Celtics") {
+        aliases.add("Celtics");
+      }
+      if (team.name === "New York Knicks") {
+        aliases.add("Knicks");
+      }
+      if (team.name === "Cleveland Cavaliers") {
+        aliases.add("Cavaliers");
+        aliases.add("Cavs");
+      }
+      if (team.name === "Toronto Raptors") {
+        aliases.add("Raptors");
+      }
+      if (team.name === "Atlanta Hawks") {
+        aliases.add("Hawks");
+      }
+      if (team.name === "Philadelphia 76ers") {
+        aliases.add("76ers");
+        aliases.add("Sixers");
+      }
+      if (team.name === "Orlando Magic") {
+        aliases.add("Magic");
+      }
+
+      return [team.id, Array.from(aliases).map(normalizeTeamName)];
+    })
+  );
+}
+
+function findDraftTeamIdByEspnTeam(game, aliasMap, espnTeam) {
+  const candidateNames = [
+    espnTeam.displayName,
+    espnTeam.shortDisplayName,
+    espnTeam.name,
+    espnTeam.abbreviation
+  ]
+    .filter(Boolean)
+    .map(normalizeTeamName);
+
+  return game.teams.find((team) =>
+    aliasMap[team.id].some((alias) => candidateNames.includes(alias))
+  )?.id || null;
+}
+
+function extractTeamStats(game, events) {
+  const aliasMap = buildTeamAliasMap(game);
+  const stats = Object.fromEntries(
+    game.teams.map((team) => [team.id, { wins: 0, losses: 0 }])
+  );
+
+  events.forEach((event) => {
+    const competition = event.competitions?.[0];
+    const status = competition?.status?.type || event.status?.type;
+    const competitors = competition?.competitors || [];
+
+    if (!status?.completed || competitors.length !== 2) {
+      return;
+    }
+
+    const winner = competitors.find((competitor) => competitor.winner);
+    const loser = competitors.find((competitor) => competitor.winner === false);
+
+    if (!winner || !loser) {
+      return;
+    }
+
+    const winnerTeamId = findDraftTeamIdByEspnTeam(game, aliasMap, winner.team || {});
+    const loserTeamId = findDraftTeamIdByEspnTeam(game, aliasMap, loser.team || {});
+
+    if (winnerTeamId) {
+      stats[winnerTeamId].wins += 1;
+    }
+    if (loserTeamId) {
+      stats[loserTeamId].losses += 1;
+    }
+  });
+
+  return stats;
+}
+
+function countCompletedEvents(events) {
+  return events.filter((event) => {
+    const competition = event.competitions?.[0];
+    const status = competition?.status?.type || event.status?.type;
+    return Boolean(status?.completed);
+  }).length;
+}
+
+function buildLeaderboard(game, teamStats) {
+  return game.players
     .map((player) => {
-      const teamIds = picksByPlayer[player.id];
+      const teamIds = game.derived.picksByPlayer[player.id];
       const teamScore = teamIds.reduce((total, teamId) => {
-        const team = teamsById[teamId];
-        return total + team.wins - team.losses;
+        const stats = teamStats[teamId] || { wins: 0, losses: 0 };
+        return total + stats.wins - stats.losses;
       }, 0);
+
       const finalsPick = game.finalsPredictions[player.id] || null;
       const predictedChampion = finalsPick && finalsPick === game.championTeamId;
       const draftedChampion = predictedChampion && teamIds.includes(finalsPick);
@@ -83,41 +308,16 @@ function buildDerivedGame(game) {
       }
       return left.playerName.localeCompare(right.playerName);
     });
-
-  return {
-    ...game,
-    derived: {
-      draftComplete: game.picks.length >= turns.length,
-      picksByPlayer,
-      leaderboard
-    }
-  };
-}
-
-function loadGame() {
-  const saved = localStorage.getItem(GAME_STORAGE_KEY);
-  return buildDerivedGame(saved ? JSON.parse(saved) : createDefaultGameState());
 }
 
 function getTeamById(game, teamId) {
   return game.teams.find((team) => team.id === teamId);
 }
 
-function timestampToLabel(value) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short"
-  });
-}
-
-function formatPoints(points) {
-  return points > 0 ? `+${points}` : `${points}`;
-}
-
-function renderStandings(game) {
+function renderStandings(leaderboard) {
   elements.standingsStrip.innerHTML = "";
 
-  game.derived.leaderboard.forEach((entry, index) => {
+  leaderboard.forEach((entry, index) => {
     const card = document.createElement("article");
     card.className = "results-standing-card";
     card.innerHTML = `
@@ -130,10 +330,10 @@ function renderStandings(game) {
   });
 }
 
-function renderSquads(game) {
+function renderSquads(game, leaderboard, teamStats) {
   elements.squadGrid.innerHTML = "";
 
-  game.derived.leaderboard.forEach((entry, index) => {
+  leaderboard.forEach((entry, index) => {
     const card = document.createElement("article");
     card.className = "results-squad-card";
     const finalsPickLabel = entry.finalsPick ? getTeamById(game, entry.finalsPick).name : "Not locked";
@@ -154,7 +354,8 @@ function renderSquads(game) {
 
     entry.teamIds.forEach((teamId) => {
       const team = getTeamById(game, teamId);
-      const teamPoints = team.wins - team.losses;
+      const stats = teamStats[teamId] || { wins: 0, losses: 0 };
+      const teamPoints = stats.wins - stats.losses;
       const teamCard = document.createElement("div");
       teamCard.className = "results-team-card";
       teamCard.innerHTML = `
@@ -165,8 +366,8 @@ function renderSquads(game) {
         <h4>${team.name}</h4>
         <p class="section-note">${team.conference} ${team.slot}</p>
         <div class="results-team-meta">
-          <span>${team.wins} wins</span>
-          <span>${team.losses} losses</span>
+          <span>${stats.wins} wins</span>
+          <span>${stats.losses} losses</span>
         </div>
       `;
       teamList.appendChild(teamCard);
@@ -176,7 +377,7 @@ function renderSquads(game) {
   });
 }
 
-function render() {
+async function render() {
   const game = loadGame();
 
   if (!game.derived.draftComplete) {
@@ -184,11 +385,32 @@ function render() {
     return;
   }
 
-  elements.lastUpdated.textContent = `Updated ${timestampToLabel(game.updatedAt)}`;
-  renderStandings(game);
-  renderSquads(game);
+  elements.refreshButton.disabled = true;
+  elements.lastUpdated.textContent = `Draft saved ${timestampToLabel(game.updatedAt)}`;
+  elements.sourceStatus.textContent = "Refreshing ESPN playoff results...";
+
+  try {
+    const { events, sourceLabel } = await fetchScoreboardEvents();
+    const teamStats = extractTeamStats(game, events);
+    const leaderboard = buildLeaderboard(game, teamStats);
+    const completedEvents = countCompletedEvents(events);
+
+    renderStandings(leaderboard);
+    renderSquads(game, leaderboard, teamStats);
+    elements.sourceStatus.textContent = `${sourceLabel}. Completed games counted: ${completedEvents}.`;
+  } catch (error) {
+    elements.sourceStatus.textContent = `ESPN auto scoring failed: ${error.message}`;
+    elements.standingsStrip.innerHTML = "";
+    elements.squadGrid.innerHTML = "";
+  } finally {
+    elements.refreshButton.disabled = false;
+  }
 }
 
+elements.refreshButton.addEventListener("click", () => {
+  render();
+});
+
 window.addEventListener("storage", render);
-setInterval(render, 10000);
+setInterval(render, 30000);
 render();

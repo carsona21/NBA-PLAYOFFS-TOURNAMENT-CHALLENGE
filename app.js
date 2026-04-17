@@ -578,6 +578,10 @@ function renderChampionControls() {
 }
 
 function renderScoreTable() {
+  if (!elements.scoreTableBody) {
+    return;
+  }
+
   elements.scoreTableBody.innerHTML = "";
   state.game.teams.forEach((team) => {
     const row = document.createElement("tr");
@@ -771,22 +775,24 @@ elements.clearChampionButton.addEventListener("click", () => {
   }
 });
 
-elements.scoreTableBody.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-save-score]");
-  if (!button) {
-    return;
-  }
+if (elements.scoreTableBody) {
+  elements.scoreTableBody.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-save-score]");
+    if (!button) {
+      return;
+    }
 
-  const teamId = button.dataset.saveScore;
-  const wins = Number.parseInt(elements.scoreTableBody.querySelector(`[data-team-id="${teamId}"][data-field="wins"]`).value, 10);
-  const losses = Number.parseInt(elements.scoreTableBody.querySelector(`[data-team-id="${teamId}"][data-field="losses"]`).value, 10);
+    const teamId = button.dataset.saveScore;
+    const wins = Number.parseInt(elements.scoreTableBody.querySelector(`[data-team-id="${teamId}"][data-field="wins"]`).value, 10);
+    const losses = Number.parseInt(elements.scoreTableBody.querySelector(`[data-team-id="${teamId}"][data-field="losses"]`).value, 10);
 
-  try {
-    saveTeamScore(teamId, wins, losses);
-  } catch (error) {
-    alert(error.message);
-  }
-});
+    try {
+      saveTeamScore(teamId, wins, losses);
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+}
 
 elements.resetButton.addEventListener("click", () => {
   if (!window.confirm("Reset the entire draft, scores, and Finals picks?")) {
