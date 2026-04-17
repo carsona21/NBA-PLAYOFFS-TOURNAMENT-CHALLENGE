@@ -136,13 +136,19 @@ function render() {
   });
 
   game.players.forEach((player) => {
+    const standing = game.derived.leaderboard.find((entry) => entry.playerId === player.id);
     const board = document.createElement("article");
     board.className = "board-card";
     const teamIds = game.derived.picksByPlayer[player.id];
     board.innerHTML = `
-      <h3>${player.name}</h3>
+      <h3>${player.name} • ${standing.totalScore} pts</h3>
       ${teamIds.length
-        ? `<ul>${teamIds.map((teamId) => `<li>${getTeamById(game, teamId).name} (${getTeamById(game, teamId).wins - getTeamById(game, teamId).losses})</li>`).join("")}</ul>`
+        ? `<ul>${teamIds.map((teamId) => {
+            const team = getTeamById(game, teamId);
+            const teamPoints = team.wins - team.losses;
+            const teamPointsLabel = teamPoints > 0 ? `+${teamPoints}` : `${teamPoints}`;
+            return `<li>${team.name} • ${teamPointsLabel} pts</li>`;
+          }).join("")}</ul>`
         : "<p class='section-note'>No teams drafted.</p>"}
       <p class="section-note">Finals pick: ${game.finalsPredictions[player.id] ? getTeamById(game, game.finalsPredictions[player.id]).name : "Not locked"}</p>
     `;

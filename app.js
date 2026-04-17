@@ -13,11 +13,18 @@ const isControlOverride = new URLSearchParams(window.location.search).get("contr
 
 const elements = {
   leaderboard: document.querySelector("#leaderboard"),
+  playerLobbyPanel: document.querySelector("#player-lobby-panel"),
+  draftBoardPanel: document.querySelector("#draft-board-panel"),
+  playerSummaryPanel: document.querySelector("#player-summary-panel"),
+  commissionerPanel: document.querySelector("#commissioner-panel"),
+  notesPanel: document.querySelector("#notes-panel"),
   playerLobby: document.querySelector("#player-lobby"),
   currentPlayerName: document.querySelector("#current-player-name"),
   authStatus: document.querySelector("#auth-status"),
   switchPlayerButton: document.querySelector("#switch-player-button"),
   commissionerButton: document.querySelector("#commissioner-button"),
+  commissionerEyebrow: document.querySelector("#commissioner-eyebrow"),
+  commissionerTitle: document.querySelector("#commissioner-title"),
   commissionerStatus: document.querySelector("#commissioner-status"),
   draftStatus: document.querySelector("#draft-status"),
   randomOrderButton: document.querySelector("#random-order-button"),
@@ -358,12 +365,7 @@ function renderLeaderboard() {
 }
 
 function renderPlayerLobby() {
-  const lobbySection = elements.playerLobby.closest(".panel");
   const locked = isPlayerLocked();
-
-  if (lobbySection) {
-    lobbySection.style.display = locked ? "none" : "";
-  }
 
   elements.playerLobby.innerHTML = "";
 
@@ -600,6 +602,29 @@ function renderIdentity() {
   elements.commissionerButton.style.display = isCommissionerPlayer() ? "" : "none";
 }
 
+function renderPageMode() {
+  const preDraftMode = !state.game.derived.draftComplete;
+  const controlMode = isControlOverride;
+
+  elements.commissionerEyebrow.textContent = preDraftMode ? "Draft Setup" : "Scoring Desk";
+  elements.commissionerTitle.textContent = preDraftMode ? "Draft Controls" : "Commissioner Controls";
+
+  if (elements.leaderboard?.closest(".panel")) {
+    elements.leaderboard.closest(".panel").style.display = "none";
+  }
+
+  elements.playerLobbyPanel.style.display = preDraftMode && !isPlayerLocked() ? "" : "none";
+  elements.playerSummaryPanel.style.display = preDraftMode ? "none" : "";
+  elements.notesPanel.style.display = preDraftMode ? "none" : "";
+
+  if (preDraftMode) {
+    elements.commissionerPanel.style.display = "";
+    return;
+  }
+
+  elements.commissionerPanel.style.display = controlMode && isCommissionerPlayer() ? "" : "none";
+}
+
 function renderSourceNote() {
   elements.sourceNote.innerHTML =
     `${state.game.meta.notes} <a href="${state.game.meta.sourceUrl}" target="_blank" rel="noreferrer">Open bracket source</a>.`;
@@ -643,8 +668,8 @@ function renderDialog() {
 }
 
 function render() {
+  renderPageMode();
   renderIdentity();
-  renderLeaderboard();
   renderPlayerLobby();
   renderTurnStrip();
   renderDraftStatus();
