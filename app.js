@@ -35,6 +35,7 @@ const elements = {
   playerBoards: document.querySelector("#player-boards"),
   finalsSelect: document.querySelector("#finals-select"),
   lockFinalsButton: document.querySelector("#lock-finals-button"),
+  finalsHelperText: document.querySelector("#finals-helper-text"),
   lastUpdated: document.querySelector("#last-updated"),
   sourceNote: document.querySelector("#source-note"),
   nameEditor: document.querySelector("#name-editor"),
@@ -141,6 +142,30 @@ function getTeamById(teamId) {
   return state.game.teams.find((team) => team.id === teamId);
 }
 
+function getTeamLogoUrl(teamId) {
+  const logoCodes = {
+    det: "det",
+    bos: "bos",
+    nyk: "ny",
+    cle: "cle",
+    tor: "tor",
+    atl: "atl",
+    phi: "phi",
+    orl: "orl",
+    okc: "okc",
+    sas: "sa",
+    den: "den",
+    lal: "lal",
+    hou: "hou",
+    min: "min",
+    phx: "phx",
+    por: "por"
+  };
+
+  const code = logoCodes[teamId];
+  return code ? `https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/${code}.png` : "";
+}
+
 function buildSnakeTurns(order, rounds) {
   const turns = [];
 
@@ -205,6 +230,7 @@ function buildDerivedGame(game) {
       turns,
       currentTurn,
       draftComplete: game.picks.length >= turns.length,
+      allFinalsPicksLocked: game.players.every((player) => Boolean(game.finalsPredictions[player.id])),
       draftedTeamIds: Array.from(draftedTeamIds),
       availableTeams: game.teams.filter((team) => !draftedTeamIds.has(team.id)),
       picksByPlayer,
@@ -239,7 +265,7 @@ function saveAndRender() {
 
 function redirectToLiveTotalsIfNeeded() {
   const onLivePage = window.location.pathname.endsWith("/live.html");
-  if (!onLivePage && !isControlOverride && state.game.derived?.draftComplete) {
+  if (!onLivePage && !isControlOverride && state.game.derived?.draftComplete && state.game.derived?.allFinalsPicksLocked) {
     window.location.href = "./live.html";
   }
 }
@@ -419,8 +445,14 @@ function renderDraftStatus() {
     return;
   }
 
-  if (state.game.derived.draftComplete) {
-    elements.draftStatus.textContent = "Draft complete. Finals picks are open.";
+  if (state.game.derived.draftComplete && !state.game.derived.allFinalsPicksLocked) {
+    const lockedCount = state.game.players.filter((player) => Boolean(state.game.finalsPredictions[player.id])).length;
+    elements.draftStatus.textContent = `Draft complete. Champion picks locked: ${lockedCount} of ${state.game.players.length}.`;
+    return;
+  }
+
+  if (state.game.derived.draftComplete && state.game.derived.allFinalsPicksLocked) {
+    elements.draftStatus.textContent = "Draft and champion picks are complete. Redirecting to the live scoring board.";
     return;
   }
 
@@ -460,7 +492,7 @@ function renderTeams() {
       card.className = "team-card";
       card.innerHTML = `
         <div>
-          <h3>${team.name}</h3>
+          <h3 class="team-title"><img class="team-logo" src="${getTeamLogoUrl(team.id)}" alt="${team.name} logo"><span>${team.name}</span></h3>
           <p class="seed-line">${team.conference} ${team.slot}</p>
         </div>
         <div>
@@ -524,7 +556,10 @@ function renderPlayerBoards() {
     board.innerHTML = `
       <h3>${player.name}</h3>
       ${teamIds.length
-        ? `<ul>${teamIds.map((teamId) => `<li>${getTeamById(teamId).name} (${getTeamById(teamId).wins - getTeamById(teamId).losses})</li>`).join("")}</ul>`
+        ? `<ul>${teamIds.map((teamId) => {
+            const team = getTeamById(teamId);
+            return `<li><span class="inline-team"><img class="mini-team-logo" src="${getTeamLogoUrl(team.id)}" alt="${team.name} logo"><span>${team.name} (${team.wins - team.losses})</span></span></li>`;
+          }).join("")}</ul>`
         : "<p class='section-note'>No teams yet.</p>"}
       <p class="section-note">Finals pick: ${state.game.finalsPredictions[player.id] ? getTeamById(state.game.finalsPredictions[player.id]).name : "Not locked"}</p>
     `;
@@ -535,6 +570,7 @@ function renderPlayerBoards() {
 function renderFinalsPicker() {
   const selectedPlayer = getSelectedPlayer();
   const lockedPick = selectedPlayer ? state.game.finalsPredictions[selectedPlayer.id] : null;
+  const finalsBox = elements.finalsSelect.closest(".finals-box");
 
   elements.finalsSelect.innerHTML = ['<option value="">Choose a team</option>']
     .concat(
@@ -549,10 +585,19 @@ function renderFinalsPicker() {
     elements.finalsSelect.value = lockedPick;
   }
 
+  if (finalsBox) {
+    finalsBox.style.display = state.game.derived.draftComplete ? "" : "none";
+  }
+
   const canLock = selectedPlayer && state.game.derived.draftComplete && !lockedPick;
   elements.finalsSelect.disabled = !canLock;
   elements.lockFinalsButton.disabled = !canLock;
   elements.lockFinalsButton.textContent = lockedPick ? "Finals Pick Locked" : "Lock Finals Pick";
+  if (elements.finalsHelperText) {
+    elements.finalsHelperText.textContent = state.game.derived.allFinalsPicksLocked
+      ? "All champion picks are locked."
+      : "Bonus: +5 if you drafted the champion, +3 if you called the winner without drafting them.";
+  }
 }
 
 function renderNameEditor() {
@@ -610,8 +655,8 @@ function renderPageMode() {
   const preDraftMode = !state.game.derived.draftComplete;
   const controlMode = isControlOverride;
 
-  elements.commissionerEyebrow.textContent = preDraftMode ? "Draft Setup" : "Scoring Desk";
-  elements.commissionerTitle.textContent = preDraftMode ? "Draft Controls" : "Commissioner Controls";
+  elements.commissionerEyebrow.textContent = preDraftMode ? "Draft Setup" : "Post-Draft";
+  elements.commissionerTitle.textContent = preDraftMode ? "Draft Controls" : "Champion And Results Controls";
 
   if (elements.leaderboard?.closest(".panel")) {
     elements.leaderboard.closest(".panel").style.display = "none";

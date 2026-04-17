@@ -59,6 +59,7 @@ function buildDerivedGame(game) {
     ...game,
     derived: {
       draftComplete: game.picks.length >= turns.length,
+      allFinalsPicksLocked: game.players.every((player) => Boolean(game.finalsPredictions[player.id])),
       picksByPlayer
     }
   };
@@ -380,7 +381,7 @@ function renderSquads(game, leaderboard, teamStats) {
 async function render() {
   const game = loadGame();
 
-  if (!game.derived.draftComplete) {
+  if (!game.derived.draftComplete || !game.derived.allFinalsPicksLocked) {
     window.location.href = "./index.html?control=1";
     return;
   }
