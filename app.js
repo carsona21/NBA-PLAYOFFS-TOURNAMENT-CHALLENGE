@@ -364,7 +364,7 @@ function closePlayerDialog() {
 
 function redirectToLiveTotalsIfNeeded() {
   const onLivePage = window.location.pathname.endsWith("/live.html");
-  if (!onLivePage && !isControlOverride && state.game.derived?.draftComplete && state.game.derived?.allFinalsPicksLocked) {
+  if (!onLivePage && !isControlOverride) {
     window.location.href = "./live.html";
   }
 }
