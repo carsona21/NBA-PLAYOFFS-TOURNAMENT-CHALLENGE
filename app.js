@@ -68,7 +68,19 @@ const state = {
   commissionerUnlocked: localStorage.getItem(COMMISSIONER_STORAGE_KEY) === "true"
 };
 
-const isControlOverride = new URLSearchParams(window.location.search).get("control") === "1";
+const queryParams = typeof URLSearchParams === "function"
+  ? new URLSearchParams(window.location.search)
+  : null;
+const isControlOverride = queryParams ? queryParams.get("control") === "1" : window.location.search.indexOf("control=1") !== -1;
+const supportsNativeDialog =
+  typeof HTMLDialogElement !== "undefined" &&
+  elementsSafeCheck("showModal") &&
+  elementsSafeCheck("close");
+
+function elementsSafeCheck(methodName) {
+  const dialog = document.createElement("dialog");
+  return typeof dialog[methodName] === "function";
+}
 
 const elements = {
   leaderboard: document.querySelector("#leaderboard"),
@@ -106,6 +118,7 @@ const elements = {
   scoreTableBody: document.querySelector("#score-table-body"),
   resetButton: document.querySelector("#reset-button"),
   playerDialog: document.querySelector("#player-dialog"),
+  closePlayerDialogButton: document.querySelector("#close-player-dialog-button"),
   playerOptions: document.querySelector("#player-options"),
   leaderboardCardTemplate: document.querySelector("#leaderboard-card-template")
 };
@@ -143,7 +156,11 @@ function createDefaultGameState() {
 }
 
 function getFinalsEligibleTeams(game) {
-  const ids = new Set(game.teams.flatMap((team) => team.finalsTeamIds || [team.id]));
+  const ids = new Set();
+  game.teams.forEach((team) => {
+    const finalsIds = team.finalsTeamIds || [team.id];
+    finalsIds.forEach((teamId) => ids.add(teamId));
+  });
   return Array.from(ids)
     .map((teamId) => TEAM_LIBRARY[teamId])
     .filter(Boolean);
@@ -323,6 +340,26 @@ function saveAndRender() {
   refreshDerivedState();
   redirectToLiveTotalsIfNeeded();
   render();
+}
+
+function openPlayerDialog() {
+  if (supportsNativeDialog) {
+    elements.playerDialog.showModal();
+    return;
+  }
+
+  elements.playerDialog.setAttribute("open", "open");
+  elements.playerDialog.classList.add("dialog-fallback");
+}
+
+function closePlayerDialog() {
+  if (supportsNativeDialog) {
+    elements.playerDialog.close();
+    return;
+  }
+
+  elements.playerDialog.removeAttribute("open");
+  elements.playerDialog.classList.remove("dialog-fallback");
 }
 
 function redirectToLiveTotalsIfNeeded() {
@@ -762,7 +799,7 @@ function renderDialog() {
     button.addEventListener("click", () => {
       try {
         claimPlayer(player.id);
-        elements.playerDialog.close();
+        closePlayerDialog();
       } catch (error) {
         alert(error.message);
       }
@@ -792,7 +829,11 @@ function render() {
 }
 
 elements.switchPlayerButton.addEventListener("click", () => {
-  elements.playerDialog.showModal();
+  openPlayerDialog();
+});
+
+elements.closePlayerDialogButton.addEventListener("click", () => {
+  closePlayerDialog();
 });
 
 elements.commissionerButton.addEventListener("click", () => {

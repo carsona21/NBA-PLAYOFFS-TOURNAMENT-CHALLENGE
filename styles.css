@@ -143,6 +143,7 @@ input:disabled {
   border-radius: 26px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .results-hero,
@@ -597,7 +598,20 @@ dialog {
   background: transparent;
 }
 
+dialog:not([open]) {
+  display: none;
+}
+
 dialog::backdrop {
+  background: rgba(19, 33, 47, 0.45);
+}
+
+.dialog-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
   background: rgba(19, 33, 47, 0.45);
 }
 

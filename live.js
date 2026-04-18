@@ -33,7 +33,12 @@ const elements = {
   squadGrid: document.querySelector("#live-squad-grid")
 };
 
-const viewerId = new URLSearchParams(window.location.search).get("viewer") || "";
+const liveQueryParams = typeof URLSearchParams === "function"
+  ? new URLSearchParams(window.location.search)
+  : null;
+const viewerId = liveQueryParams
+  ? liveQueryParams.get("viewer") || ""
+  : "";
 
 function createDefaultGameState() {
   return {
@@ -119,7 +124,7 @@ function formatPoints(points) {
 }
 
 function toDateToken(date) {
-  return date.toISOString().slice(0, 10).replaceAll("-", "");
+  return date.toISOString().slice(0, 10).replace(/-/g, "");
 }
 
 function getDateWindow() {
@@ -178,8 +183,15 @@ async function fetchScoreboardEvents() {
     })
   );
 
+  const flattenedEvents = [];
+  dailyPayloads.forEach((events) => {
+    events.forEach((event) => {
+      flattenedEvents.push(event);
+    });
+  });
+
   return {
-    events: dailyPayloads.flat(),
+    events: flattenedEvents,
     sourceLabel: `Auto scoring from ESPN daily scoreboards ${startToken}-${endToken}`
   };
 }
