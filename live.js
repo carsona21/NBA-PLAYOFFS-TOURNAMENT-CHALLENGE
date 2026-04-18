@@ -33,7 +33,7 @@ const elements = {
   squadGrid: document.querySelector("#live-squad-grid")
 };
 
-const viewerId = new URLSearchParams(window.location.search).get("viewer") || localStorage.getItem("nba-playoffs-selected-player") || "";
+const viewerId = new URLSearchParams(window.location.search).get("viewer") || "";
 
 function createDefaultGameState() {
   return {

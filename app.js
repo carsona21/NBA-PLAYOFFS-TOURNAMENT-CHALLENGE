@@ -1,5 +1,4 @@
 const GAME_STORAGE_KEY = "nba-playoffs-challenge-state";
-const PLAYER_STORAGE_KEY = "nba-playoffs-selected-player";
 const COMMISSIONER_STORAGE_KEY = "nba-playoffs-commissioner-unlocked";
 const COMMISSIONER_PLAYER_ID = "nosrac";
 
@@ -65,7 +64,7 @@ const DEFAULT_DRAFT_TEAMS = [
 
 const state = {
   game: null,
-  selectedPlayerId: localStorage.getItem(PLAYER_STORAGE_KEY) || null,
+  selectedPlayerId: null,
   commissionerUnlocked: localStorage.getItem(COMMISSIONER_STORAGE_KEY) === "true"
 };
 
@@ -179,7 +178,6 @@ function setCommissionerUnlocked(value) {
 
 function setSelectedPlayer(playerId) {
   state.selectedPlayerId = playerId;
-  localStorage.setItem(PLAYER_STORAGE_KEY, playerId);
 }
 
 function getSelectedPlayer() {
@@ -914,6 +912,7 @@ elements.resetButton.addEventListener("click", () => {
 });
 
 loadGame();
+localStorage.removeItem("nba-playoffs-selected-player");
 refreshDerivedState();
 redirectToLiveTotalsIfNeeded();
 render();
