@@ -3,6 +3,66 @@ const PLAYER_STORAGE_KEY = "nba-playoffs-selected-player";
 const COMMISSIONER_STORAGE_KEY = "nba-playoffs-commissioner-unlocked";
 const COMMISSIONER_PLAYER_ID = "nosrac";
 
+const TEAM_LIBRARY = {
+  det: { id: "det", name: "Detroit Pistons", conference: "East", slot: "1 seed", logoCode: "det" },
+  bos: { id: "bos", name: "Boston Celtics", conference: "East", slot: "2 seed", logoCode: "bos" },
+  nyk: { id: "nyk", name: "New York Knicks", conference: "East", slot: "3 seed", logoCode: "ny" },
+  cle: { id: "cle", name: "Cleveland Cavaliers", conference: "East", slot: "4 seed", logoCode: "cle" },
+  tor: { id: "tor", name: "Toronto Raptors", conference: "East", slot: "5 seed", logoCode: "tor" },
+  atl: { id: "atl", name: "Atlanta Hawks", conference: "East", slot: "6 seed", logoCode: "atl" },
+  phi: { id: "phi", name: "Philadelphia 76ers", conference: "East", slot: "7 seed", logoCode: "phi" },
+  orl: { id: "orl", name: "Orlando Magic", conference: "East", slot: "Play-In", logoCode: "orl" },
+  cha: { id: "cha", name: "Charlotte Hornets", conference: "East", slot: "Play-In", logoCode: "cha" },
+  okc: { id: "okc", name: "Oklahoma City Thunder", conference: "West", slot: "1 seed", logoCode: "okc" },
+  sas: { id: "sas", name: "San Antonio Spurs", conference: "West", slot: "2 seed", logoCode: "sa" },
+  den: { id: "den", name: "Denver Nuggets", conference: "West", slot: "3 seed", logoCode: "den" },
+  lal: { id: "lal", name: "Los Angeles Lakers", conference: "West", slot: "4 seed", logoCode: "lal" },
+  hou: { id: "hou", name: "Houston Rockets", conference: "West", slot: "5 seed", logoCode: "hou" },
+  min: { id: "min", name: "Minnesota Timberwolves", conference: "West", slot: "6 seed", logoCode: "min" },
+  por: { id: "por", name: "Portland Trail Blazers", conference: "West", slot: "7 seed", logoCode: "por" },
+  phx: { id: "phx", name: "Phoenix Suns", conference: "West", slot: "Play-In", logoCode: "phx" },
+  gsw: { id: "gsw", name: "Golden State Warriors", conference: "West", slot: "Play-In", logoCode: "gs" }
+};
+
+const DEFAULT_DRAFT_TEAMS = [
+  { id: "det", name: "Detroit Pistons", conference: "East", slot: "1 seed", wins: 0, losses: 0, finalsTeamIds: ["det"] },
+  { id: "bos", name: "Boston Celtics", conference: "East", slot: "2 seed", wins: 0, losses: 0, finalsTeamIds: ["bos"] },
+  { id: "nyk", name: "New York Knicks", conference: "East", slot: "3 seed", wins: 0, losses: 0, finalsTeamIds: ["nyk"] },
+  { id: "cle", name: "Cleveland Cavaliers", conference: "East", slot: "4 seed", wins: 0, losses: 0, finalsTeamIds: ["cle"] },
+  { id: "tor", name: "Toronto Raptors", conference: "East", slot: "5 seed", wins: 0, losses: 0, finalsTeamIds: ["tor"] },
+  { id: "atl", name: "Atlanta Hawks", conference: "East", slot: "6 seed", wins: 0, losses: 0, finalsTeamIds: ["atl"] },
+  { id: "phi", name: "Philadelphia 76ers", conference: "East", slot: "7 seed", wins: 0, losses: 0, finalsTeamIds: ["phi"] },
+  {
+    id: "east-8-play-in",
+    name: "Magic / Hornets",
+    conference: "East",
+    slot: "8 seed play-in",
+    wins: 0,
+    losses: 0,
+    logoTeamIds: ["orl", "cha"],
+    finalsTeamIds: ["orl", "cha"],
+    aliases: ["Orlando Magic", "Magic", "Charlotte Hornets", "Hornets"]
+  },
+  { id: "okc", name: "Oklahoma City Thunder", conference: "West", slot: "1 seed", wins: 0, losses: 0, finalsTeamIds: ["okc"] },
+  { id: "sas", name: "San Antonio Spurs", conference: "West", slot: "2 seed", wins: 0, losses: 0, finalsTeamIds: ["sas"] },
+  { id: "den", name: "Denver Nuggets", conference: "West", slot: "3 seed", wins: 0, losses: 0, finalsTeamIds: ["den"] },
+  { id: "lal", name: "Los Angeles Lakers", conference: "West", slot: "4 seed", wins: 0, losses: 0, finalsTeamIds: ["lal"] },
+  { id: "hou", name: "Houston Rockets", conference: "West", slot: "5 seed", wins: 0, losses: 0, finalsTeamIds: ["hou"] },
+  { id: "min", name: "Minnesota Timberwolves", conference: "West", slot: "6 seed", wins: 0, losses: 0, finalsTeamIds: ["min"] },
+  { id: "por", name: "Portland Trail Blazers", conference: "West", slot: "7 seed", wins: 0, losses: 0, finalsTeamIds: ["por"] },
+  {
+    id: "west-8-play-in",
+    name: "Suns / Warriors",
+    conference: "West",
+    slot: "8 seed play-in",
+    wins: 0,
+    losses: 0,
+    logoTeamIds: ["phx", "gsw"],
+    finalsTeamIds: ["phx", "gsw"],
+    aliases: ["Phoenix Suns", "Suns", "Golden State Warriors", "Warriors"]
+  }
+];
+
 const state = {
   game: null,
   selectedPlayerId: localStorage.getItem(PLAYER_STORAGE_KEY) || null,
@@ -23,6 +83,7 @@ const elements = {
   authStatus: document.querySelector("#auth-status"),
   switchPlayerButton: document.querySelector("#switch-player-button"),
   commissionerButton: document.querySelector("#commissioner-button"),
+  liveBoardButton: document.querySelector("#live-board-button"),
   commissionerEyebrow: document.querySelector("#commissioner-eyebrow"),
   commissionerTitle: document.querySelector("#commissioner-title"),
   commissionerStatus: document.querySelector("#commissioner-status"),
@@ -54,11 +115,11 @@ function createDefaultGameState() {
   return {
     meta: {
       seasonLabel: "2026 NBA Playoffs Challenge",
-      sourceLabel: "Manual 2026 playoff field",
+      sourceLabel: "2026 playoff field with play-in combo slots",
       sourceUrl: "https://www.nba.com/playoffs/2026/bracket",
-      sourceUpdated: "2026-04-15",
+      sourceUpdated: "2026-04-17",
       notes:
-        "This version is a plain browser app. It saves the whole game in this browser only, so use one shared device or one shared browser profile."
+        "This version is a plain browser app. The two 8-seed play-in spots are draftable combo slots until Friday's play-in games are settled, and the live board scores whichever team wins through."
     },
     settings: {
       playersCount: 4,
@@ -73,30 +134,29 @@ function createDefaultGameState() {
       { id: "winston-lover", name: "Winston Lover" }
     ],
     draftOrder: ["nosrac", "samuel", "mason", "winston-lover"],
-    teams: [
-      { id: "det", name: "Detroit Pistons", conference: "East", slot: "1 seed", wins: 0, losses: 0 },
-      { id: "bos", name: "Boston Celtics", conference: "East", slot: "2 seed", wins: 0, losses: 0 },
-      { id: "nyk", name: "New York Knicks", conference: "East", slot: "3 seed", wins: 0, losses: 0 },
-      { id: "cle", name: "Cleveland Cavaliers", conference: "East", slot: "4 seed", wins: 0, losses: 0 },
-      { id: "tor", name: "Toronto Raptors", conference: "East", slot: "5 seed", wins: 0, losses: 0 },
-      { id: "atl", name: "Atlanta Hawks", conference: "East", slot: "6 seed", wins: 0, losses: 0 },
-      { id: "phi", name: "Philadelphia 76ers", conference: "East", slot: "7 seed", wins: 0, losses: 0 },
-      { id: "orl", name: "Orlando Magic", conference: "East", slot: "8 seed", wins: 0, losses: 0 },
-      { id: "okc", name: "Oklahoma City Thunder", conference: "West", slot: "1 seed", wins: 0, losses: 0 },
-      { id: "sas", name: "San Antonio Spurs", conference: "West", slot: "2 seed", wins: 0, losses: 0 },
-      { id: "den", name: "Denver Nuggets", conference: "West", slot: "3 seed", wins: 0, losses: 0 },
-      { id: "lal", name: "Los Angeles Lakers", conference: "West", slot: "4 seed", wins: 0, losses: 0 },
-      { id: "hou", name: "Houston Rockets", conference: "West", slot: "5 seed", wins: 0, losses: 0 },
-      { id: "min", name: "Minnesota Timberwolves", conference: "West", slot: "6 seed", wins: 0, losses: 0 },
-      { id: "phx", name: "Phoenix Suns", conference: "West", slot: "7 seed", wins: 0, losses: 0 },
-      { id: "por", name: "Portland Trail Blazers", conference: "West", slot: "8 seed", wins: 0, losses: 0 }
-    ],
+    teams: DEFAULT_DRAFT_TEAMS.map((team) => ({ ...team })),
     picks: [],
     draftStarted: false,
     finalsPredictions: {},
     championTeamId: null,
     updatedAt: new Date().toISOString()
   };
+}
+
+function getFinalsEligibleTeams(game) {
+  const ids = new Set(game.teams.flatMap((team) => team.finalsTeamIds || [team.id]));
+  return Array.from(ids)
+    .map((teamId) => TEAM_LIBRARY[teamId])
+    .filter(Boolean);
+}
+
+function getFinalsTeamById(teamId) {
+  return TEAM_LIBRARY[teamId] || null;
+}
+
+function draftedTeamCoversFinalsPick(draftedTeamId, finalsPickId) {
+  const draftedTeam = getTeamById(draftedTeamId);
+  return Boolean(draftedTeam && (draftedTeam.finalsTeamIds || [draftedTeam.id]).includes(finalsPickId));
 }
 
 function saveGame() {
@@ -139,27 +199,34 @@ function getTeamById(teamId) {
 }
 
 function getTeamLogoUrl(teamId) {
-  const logoCodes = {
-    det: "det",
-    bos: "bos",
-    nyk: "ny",
-    cle: "cle",
-    tor: "tor",
-    atl: "atl",
-    phi: "phi",
-    orl: "orl",
-    okc: "okc",
-    sas: "sa",
-    den: "den",
-    lal: "lal",
-    hou: "hou",
-    min: "min",
-    phx: "phx",
-    por: "por"
-  };
-
-  const code = logoCodes[teamId];
+  const code = TEAM_LIBRARY[teamId]?.logoCode;
   return code ? `https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/${code}.png` : "";
+}
+
+function getTeamDisplayName(teamId) {
+  return getTeamById(teamId)?.name || getFinalsTeamById(teamId)?.name || "Unknown team";
+}
+
+function getTeamTitleMarkup(team) {
+  const logoTeamIds = team.logoTeamIds || [team.id];
+  const logos = logoTeamIds
+    .map((teamId) => getTeamLogoUrl(teamId))
+    .filter(Boolean)
+    .map((src) => `<img class="team-logo" src="${src}" alt="">`)
+    .join("");
+
+  return `<h3 class="team-title">${logos}<span>${team.name}</span></h3>`;
+}
+
+function getMiniTeamMarkup(team) {
+  const logoTeamIds = team.logoTeamIds || [team.id];
+  const logos = logoTeamIds
+    .map((teamId) => getTeamLogoUrl(teamId))
+    .filter(Boolean)
+    .map((src) => `<img class="mini-team-logo" src="${src}" alt="">`)
+    .join("");
+
+  return `<span class="inline-team">${logos}<span>${team.name}</span></span>`;
 }
 
 function buildSnakeTurns(order, rounds) {
@@ -196,7 +263,8 @@ function buildDerivedGame(game) {
       }, 0);
       const finalsPick = game.finalsPredictions[player.id] || null;
       const predictedChampion = finalsPick && finalsPick === game.championTeamId;
-      const draftedChampion = predictedChampion && teamIds.includes(finalsPick);
+      const draftedChampion =
+        predictedChampion && teamIds.some((teamId) => draftedTeamCoversFinalsPick(teamId, finalsPick));
       const finalsBonus = predictedChampion
         ? draftedChampion
           ? game.settings.finalsBonusWithTeam
@@ -382,7 +450,7 @@ function renderLeaderboard() {
     fragment.querySelector("h3").textContent = entry.playerName;
     fragment.querySelector(".score-line").textContent = `${entry.totalScore} pts total`;
     fragment.querySelector(".meta-line").textContent =
-      `Team score: ${entry.teamScore} | Finals bonus: ${entry.finalsBonus} | Finals pick: ${entry.finalsPick ? getTeamById(entry.finalsPick).name : "Not locked"}`;
+      `Team score: ${entry.teamScore} | Finals bonus: ${entry.finalsBonus} | Finals pick: ${entry.finalsPick ? getTeamDisplayName(entry.finalsPick) : "Not locked"}`;
     elements.leaderboard.appendChild(fragment);
   });
 }
@@ -486,7 +554,7 @@ function renderTeams() {
       card.className = "team-card";
       card.innerHTML = `
         <div>
-          <h3 class="team-title"><img class="team-logo" src="${getTeamLogoUrl(team.id)}" alt="${team.name} logo"><span>${team.name}</span></h3>
+          ${getTeamTitleMarkup(team)}
           <p class="seed-line">${team.conference} ${team.slot}</p>
         </div>
         <div>
@@ -552,10 +620,10 @@ function renderPlayerBoards() {
       ${teamIds.length
         ? `<ul>${teamIds.map((teamId) => {
             const team = getTeamById(teamId);
-            return `<li><span class="inline-team"><img class="mini-team-logo" src="${getTeamLogoUrl(team.id)}" alt="${team.name} logo"><span>${team.name} (${team.wins - team.losses})</span></span></li>`;
+            return `<li>${getMiniTeamMarkup(team)} <span>(${team.wins - team.losses})</span></li>`;
           }).join("")}</ul>`
         : "<p class='section-note'>No teams yet.</p>"}
-      <p class="section-note">Finals pick: ${state.game.finalsPredictions[player.id] ? getTeamById(state.game.finalsPredictions[player.id]).name : "Not locked"}</p>
+      <p class="section-note">Finals pick: ${state.game.finalsPredictions[player.id] ? getTeamDisplayName(state.game.finalsPredictions[player.id]) : "Not locked"}</p>
     `;
     elements.playerBoards.appendChild(board);
   });
@@ -568,7 +636,7 @@ function renderFinalsPicker() {
 
   elements.finalsSelect.innerHTML = ['<option value="">Choose a team</option>']
     .concat(
-      state.game.teams
+      getFinalsEligibleTeams(state.game)
         .slice()
         .sort((left, right) => left.name.localeCompare(right.name))
         .map((team) => `<option value="${team.id}">${team.name}</option>`)
@@ -608,7 +676,7 @@ function renderNameEditor() {
 
 function renderChampionControls() {
   elements.championSelect.innerHTML = ['<option value="">No champion set</option>']
-    .concat(state.game.teams.map((team) => `<option value="${team.id}">${team.name}</option>`))
+    .concat(getFinalsEligibleTeams(state.game).map((team) => `<option value="${team.id}">${team.name}</option>`))
     .join("");
   elements.championSelect.value = state.game.championTeamId || "";
   elements.championSelect.disabled = !state.commissionerUnlocked || !isCommissionerPlayer();
@@ -643,6 +711,8 @@ function renderIdentity() {
     : "Pick a player";
   elements.switchPlayerButton.style.display = "";
   elements.commissionerButton.style.display = isCommissionerPlayer() ? "" : "none";
+  elements.liveBoardButton.style.display =
+    state.game.derived?.draftComplete && state.game.derived?.allFinalsPicksLocked ? "" : "none";
 }
 
 function renderPageMode() {
@@ -756,6 +826,11 @@ elements.commissionerButton.addEventListener("click", () => {
 
   setCommissionerUnlocked(true);
   render();
+});
+
+elements.liveBoardButton.addEventListener("click", () => {
+  const playerId = state.selectedPlayerId ? `?viewer=${state.selectedPlayerId}` : "";
+  window.location.href = `./live.html${playerId}`;
 });
 
 elements.startDraftButton.addEventListener("click", () => {

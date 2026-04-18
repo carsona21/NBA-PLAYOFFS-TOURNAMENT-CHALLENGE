@@ -1,7 +1,28 @@
 const GAME_STORAGE_KEY = "nba-playoffs-challenge-state";
-const PLAYOFF_START_DATE = "2026-04-14";
+const PLAYOFF_START_DATE = "2026-04-18";
 const PLAYOFF_END_DATE = "2026-06-30";
 const ESPN_SCOREBOARD_ENDPOINT = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard";
+
+const TEAM_LIBRARY = {
+  det: { id: "det", name: "Detroit Pistons" },
+  bos: { id: "bos", name: "Boston Celtics" },
+  nyk: { id: "nyk", name: "New York Knicks" },
+  cle: { id: "cle", name: "Cleveland Cavaliers" },
+  tor: { id: "tor", name: "Toronto Raptors" },
+  atl: { id: "atl", name: "Atlanta Hawks" },
+  phi: { id: "phi", name: "Philadelphia 76ers" },
+  orl: { id: "orl", name: "Orlando Magic" },
+  cha: { id: "cha", name: "Charlotte Hornets" },
+  okc: { id: "okc", name: "Oklahoma City Thunder" },
+  sas: { id: "sas", name: "San Antonio Spurs" },
+  den: { id: "den", name: "Denver Nuggets" },
+  lal: { id: "lal", name: "Los Angeles Lakers" },
+  hou: { id: "hou", name: "Houston Rockets" },
+  min: { id: "min", name: "Minnesota Timberwolves" },
+  por: { id: "por", name: "Portland Trail Blazers" },
+  phx: { id: "phx", name: "Phoenix Suns" },
+  gsw: { id: "gsw", name: "Golden State Warriors" }
+};
 
 const elements = {
   viewerLabel: document.querySelector("#live-viewer-label"),
@@ -71,6 +92,19 @@ function buildDerivedGame(game) {
 function loadGame() {
   const saved = localStorage.getItem(GAME_STORAGE_KEY);
   return buildDerivedGame(saved ? JSON.parse(saved) : createDefaultGameState());
+}
+
+function getFinalsTeamById(teamId) {
+  return TEAM_LIBRARY[teamId] || null;
+}
+
+function getTeamDisplayName(game, teamId) {
+  return game.teams.find((team) => team.id === teamId)?.name || getFinalsTeamById(teamId)?.name || "Unknown team";
+}
+
+function draftedTeamCoversFinalsPick(game, draftedTeamId, finalsPickId) {
+  const draftedTeam = game.teams.find((team) => team.id === draftedTeamId);
+  return Boolean(draftedTeam && (draftedTeam.finalsTeamIds || [draftedTeam.id]).includes(finalsPickId));
 }
 
 function timestampToLabel(value) {
@@ -159,7 +193,7 @@ function normalizeTeamName(name) {
 function buildTeamAliasMap(game) {
   return Object.fromEntries(
     game.teams.map((team) => {
-      const aliases = new Set([team.name]);
+      const aliases = new Set([team.name, ...(team.aliases || [])]);
 
       if (team.name === "Los Angeles Lakers") {
         aliases.add("Lakers");
@@ -289,7 +323,8 @@ function buildLeaderboard(game, teamStats) {
 
       const finalsPick = game.finalsPredictions[player.id] || null;
       const predictedChampion = finalsPick && finalsPick === game.championTeamId;
-      const draftedChampion = predictedChampion && teamIds.includes(finalsPick);
+      const draftedChampion =
+        predictedChampion && teamIds.some((teamId) => draftedTeamCoversFinalsPick(game, teamId, finalsPick));
       const finalsBonus = predictedChampion
         ? draftedChampion
           ? game.settings.finalsBonusWithTeam
@@ -346,7 +381,7 @@ function renderSquads(game, leaderboard, teamStats) {
     if (entry.playerId === viewerId) {
       card.classList.add("is-viewer");
     }
-    const finalsPickLabel = entry.finalsPick ? getTeamById(game, entry.finalsPick).name : "Not locked";
+    const finalsPickLabel = entry.finalsPick ? getTeamDisplayName(game, entry.finalsPick) : "Not locked";
 
     card.innerHTML = `
       <div class="results-squad-header">
