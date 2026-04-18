@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NBA Playoffs Challenge Results Snapshot</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body class="results-body">
+    <div class="page-shell">
+      <header class="results-hero">
+        <div class="results-hero-copy">
+          <div class="hero-brand">
+            <img src="./nba-logo.png" alt="NBA logo" class="hero-logo">
+          </div>
+          <p class="eyebrow">Published Snapshot</p>
+          <h1>Finished draft, live playoff scoring</h1>
+          <p class="hero-copy">
+            This is the public viewing board for the bet. The drafted teams are locked in here, and the point totals refresh from ESPN playoff results.
+          </p>
+          <div class="results-pill-row">
+            <span class="results-pill">Draft locked</span>
+            <span class="results-pill">Shared on every device</span>
+            <span class="results-pill">Live ESPN scoring</span>
+          </div>
+        </div>
+        <div class="results-sidecard">
+          <p class="identity-label">Board status</p>
+          <strong>Published live totals page</strong>
+          <p class="section-note" id="snapshot-published-label">Waiting for published draft snapshot...</p>
+          <p class="section-note" id="live-source-status">Connecting to ESPN scoreboard data...</p>
+          <button id="live-refresh-button" type="button">Refresh Live Scores</button>
+          <a class="secondary-link" href="./index.html?control=1">Open Control Room</a>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel results-summary-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Standings</p>
+              <h2>Current Order</h2>
+            </div>
+          </div>
+          <div id="live-standings-strip" class="results-standings-strip"></div>
+        </section>
+
+        <section class="panel results-board-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Team Tracker</p>
+              <h2>Each Player's Drafted Teams</h2>
+            </div>
+          </div>
+          <div id="live-squad-grid" class="results-squad-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./snapshot-data.js"></script>
+    <script src="./results_snapshot.js"></script>
+  </body>
+</html>

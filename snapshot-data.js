@@ -1,0 +1,1 @@
+window.NBA_PUBLISHED_SNAPSHOT = null;

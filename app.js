@@ -68,6 +68,8 @@ const state = {
   commissionerUnlocked: localStorage.getItem(COMMISSIONER_STORAGE_KEY) === "true"
 };
 
+const publishedSnapshot = window.NBA_PUBLISHED_SNAPSHOT || null;
+
 const queryParams = typeof URLSearchParams === "function"
   ? new URLSearchParams(window.location.search)
   : null;
@@ -116,6 +118,7 @@ const elements = {
   saveChampionButton: document.querySelector("#save-champion-button"),
   clearChampionButton: document.querySelector("#clear-champion-button"),
   scoreTableBody: document.querySelector("#score-table-body"),
+  downloadSnapshotButton: document.querySelector("#download-snapshot-button"),
   resetButton: document.querySelector("#reset-button"),
   playerDialog: document.querySelector("#player-dialog"),
   closePlayerDialogButton: document.querySelector("#close-player-dialog-button"),
@@ -363,16 +366,36 @@ function closePlayerDialog() {
 }
 
 function redirectToLiveTotalsIfNeeded() {
-  const onLivePage = window.location.pathname.endsWith("/live.html");
-  if (!onLivePage && !isControlOverride) {
-    window.location.href = "./live.html";
+  const onSnapshotPage = window.location.pathname.endsWith("/results_snapshot.html");
+  if (!onSnapshotPage && !isControlOverride && publishedSnapshot && publishedSnapshot.game) {
+    window.location.href = "./results_snapshot.html";
   }
+}
+
+function downloadPublishedSnapshot() {
+  assert(state.game.derived.draftComplete, "Finish the draft before publishing a snapshot.");
+  assert(state.game.derived.allFinalsPicksLocked, "Lock all champion picks before publishing a snapshot.");
+
+  const snapshot = {
+    publishedAt: new Date().toISOString(),
+    game: state.game
+  };
+  const fileContents = `window.NBA_PUBLISHED_SNAPSHOT = ${JSON.stringify(snapshot, null, 2)};\n`;
+  const blob = new Blob([fileContents], { type: "application/javascript;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "snapshot-data.js";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function claimPlayer(playerId) {
   setSelectedPlayer(playerId);
   if (state.game.derived?.draftComplete && state.game.derived?.allFinalsPicksLocked && !isControlOverride) {
-    window.location.href = `./live.html?viewer=${playerId}`;
+    window.location.href = `./results_snapshot.html?viewer=${playerId}`;
     return;
   }
 
@@ -564,6 +587,9 @@ function renderStartButton() {
   elements.randomOrderButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer() || state.game.draftStarted;
   elements.startDraftButton.disabled = !state.commissionerUnlocked || !isCommissionerPlayer() || state.game.draftStarted;
   elements.startDraftButton.textContent = state.game.draftStarted ? "Snake Draft Started" : "Start Snake Draft";
+  if (elements.downloadSnapshotButton) {
+    elements.downloadSnapshotButton.disabled = !state.game.derived.draftComplete || !state.game.derived.allFinalsPicksLocked;
+  }
 }
 
 function renderTeams() {
@@ -747,7 +773,7 @@ function renderIdentity() {
   elements.switchPlayerButton.style.display = "";
   elements.commissionerButton.style.display = isCommissionerPlayer() ? "" : "none";
   elements.liveBoardButton.style.display =
-    state.game.derived?.draftComplete && state.game.derived?.allFinalsPicksLocked ? "" : "none";
+    publishedSnapshot && publishedSnapshot.game ? "" : "none";
 }
 
 function renderPageMode() {
@@ -869,7 +895,16 @@ elements.commissionerButton.addEventListener("click", () => {
 
 elements.liveBoardButton.addEventListener("click", () => {
   const playerId = state.selectedPlayerId ? `?viewer=${state.selectedPlayerId}` : "";
-  window.location.href = `./live.html${playerId}`;
+  window.location.href = `./results_snapshot.html${playerId}`;
+});
+
+elements.downloadSnapshotButton.addEventListener("click", () => {
+  try {
+    downloadPublishedSnapshot();
+    alert("Downloaded a new snapshot-data.js file. Replace the repo file with it, then commit and push so every device sees the published live board.");
+  } catch (error) {
+    alert(error.message);
+  }
 });
 
 elements.startDraftButton.addEventListener("click", () => {
